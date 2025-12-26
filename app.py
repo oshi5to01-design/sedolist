@@ -301,6 +301,12 @@ def update_item(item_id, col_name, new_value):
     conn = get_connection()
     cursor = conn.cursor()
     try:
+        if hasattr(item_id, "item"):
+            item_id = item_id.item()
+
+        if hasattr(new_value, "item"):
+            new_value = new_value.item()
+
         sql = f"UPDATE items SET {col_name} = %s WHERE id = %s"
         cursor.execute(sql, (new_value, item_id))
         conn.commit()
@@ -317,6 +323,9 @@ def delete_item(item_id):
     conn = get_connection()
     cursor = conn.cursor()
     try:
+        if hasattr(item_id, "item"):
+            item_id = item_id.item()
+
         cursor.execute("DELETE FROM items WHERE id = %s", (item_id,))
         conn.commit()
     except Exception as e:
@@ -529,26 +538,41 @@ if menu == "在庫一覧" or menu is None:
     # データを取得
     df_items = load_items(st.session_state.user_id)
 
-    # 表示モード切替スイッチ（スマホ用）
+    # 表示モード切替スイッチ
     view_mode = st.radio(
         "表示モード", ["表形式（PC向け）", "カード形式（スマホ向け）"], horizontal=True
     )
 
     if view_mode == "表形式（PC向け）":
 
+        display_df = df_items[
+            ["id", "name", "price", "shop", "quantity", "memo", "created_at"]
+        ]
+        display_df.columns = [
+            "ID",
+            "商品名",
+            "価格",
+            "店舗",
+            "在庫数",
+            "メモ",
+            "登録日",
+        ]
+
         edited_df = st.data_editor(
-            df_items,
+            display_df,
             key="editor",
-            num_rows="dynamic",
+            # num_rows="dynamic",
             column_config={
-                "id": st.column_config.NumberColumn(disabled=True),
-                "created_at": st.column_config.DatetimeColumn(
+                "ID": st.column_config.NumberColumn(disabled=True),
+                "登録日": st.column_config.DatetimeColumn(
                     disabled=True, format="YYYY-MM-DD HH:mm"
                 ),
             },
             use_container_width=True,
             hide_index=True,
         )
+
+        needs_rerun = False
 
         # 更新処理
         if st.session_state.editor:
@@ -560,9 +584,22 @@ if menu == "在庫一覧" or menu is None:
                     # 変更された行のIDを取得
                     item_id = df_items.iloc[index]["id"]
 
+                    col_map = {
+                        "商品名": "name",
+                        "価格": "price",
+                        "店舗": "shop",
+                        "在庫数": "quantity",
+                        "メモ": "memo",
+                    }
+
                     for col_name, new_value in updates.items():
-                        update_item(item_id, col_name, new_value)
-                        st.toast(f"ID:{item_id}の{col_name}を更新しました！")
+                        db_col = col_map.get(col_name)
+
+                        if db_col:
+                            update_item(item_id, db_col, new_value)
+                            st.toast(f"ID:{item_id}の{col_name}を更新しました！")
+
+                needs_rerun = True
 
             # 削除されたデータ（deleted_rows）
             if changes["deleted_rows"]:
@@ -570,6 +607,14 @@ if menu == "在庫一覧" or menu is None:
                     item_id = df_items.iloc[index]["id"]
                     delete_item(item_id)
                     st.toast(f"ID:{item_id}を削除しました")
+
+                needs_rerun = True
+
+            if needs_rerun:
+                import time
+
+                time.sleep(0.5)
+                st.rerun()
 
     else:
         # スマホ向け：カード形式
