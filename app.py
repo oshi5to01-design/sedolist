@@ -47,7 +47,7 @@ def check_login(email, password):
 def register_user(username, email, password):
     """新しいユーザーを登録する"""
     conn = get_connection()
-    cursor = conn, cursor()
+    cursor = conn.cursor()
 
     # パスワードのハッシュ化
     salt = bcrypt.gensalt()
