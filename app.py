@@ -42,6 +42,35 @@ def check_login(email, password):
 
 
 # -----------------------------------------------
+# ユーザー新規登録関数
+# -----------------------------------------------
+def register_user(username, email, password):
+    """新しいユーザーを登録する"""
+    conn = get_connection()
+    cursor = conn, cursor()
+
+    # パスワードのハッシュ化
+    salt = bcrypt.gensalt()
+    password_hash = bcrypt.hashpw(password.encode("utf-8"), salt).decode("utf-8")
+
+    try:
+        cursor.excute(
+            """INSERT INTO users (username,email,password_hash) VALUES (%s,%s,%s)""",
+            (username, email, password_hash),
+        )
+        conn.commit()
+        return True, "登録しました！"
+    except psycopg2.errors.UniqueViolation:
+        conn.rollback()
+        return False, "そのメールアドレスは既に登録されています。"
+    except Exception as e:
+        conn.rollback()
+        return False, f"登録エラー:{e}"
+    finally:
+        conn.close()
+
+
+# -----------------------------------------------
 # パスワード変更関数
 # -----------------------------------------------
 def change_password(user_id, current_password, new_password):
@@ -459,7 +488,7 @@ if not st.session_state.logged_in:
     st.title("ログイン")
 
     # タブでログインとリセット申請を切り替える
-    tab1, tab2 = st.tabs(["ログイン", "パスワードを忘れた場合"])
+    tab1, tab2, tab3 = st.tabs(["ログイン", "新規登録", "パスワードを忘れた場合"])
 
     # いつものログイン
     with tab1:
@@ -488,8 +517,30 @@ if not st.session_state.logged_in:
                 else:
                     st.error("メールアドレスかパスワードが間違っています")
 
-    # リセット申請
+    # 新規登録
     with tab2:
+        st.write("新しくアカウントを作成します。")
+        with st.form("signup_form"):
+            new_username = st.text_input("ユーザー名（表示名）")
+            new_email = st.text_input("メールアドレス")
+            new_password = st.text_input("パスワード", type="password")
+
+            submitted_signup = st.form_submit_button("登録する", type="primary")
+
+            if submitted_signup:
+                if not new_username or not new_email or not new_password:
+                    st.warning("すべての項目を入力してください")
+                else:
+                    # 登録関数を呼ぶ
+                    success, msg = register_user(new_username, new_email, new_password)
+                    if success:
+                        st.success(msg)
+                        st.info("「ログイン」タブからログインしてください。")
+                    else:
+                        st.error(msg)
+
+    # リセット申請
+    with tab3:
         st.write("登録したメールアドレスを入力してください。")
         st.info("開発モードのため、リセット用URLはターミナルに表示されます。")
 

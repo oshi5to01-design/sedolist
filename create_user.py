@@ -42,4 +42,4 @@ def create_user(username, email, password):
 
 
 if __name__ == "__main__":
-    create_user("テスト三郎", "test3@example.com", "password333")
+    create_user("テスト太郎", "test@example.com", "password111")
