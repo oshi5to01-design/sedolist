@@ -54,8 +54,11 @@ def register_user(username, email, password):
     password_hash = bcrypt.hashpw(password.encode("utf-8"), salt).decode("utf-8")
 
     try:
-        cursor.excute(
-            """INSERT INTO users (username,email,password_hash) VALUES (%s,%s,%s)""",
+        cursor.execute(
+            """
+            INSERT INTO users (username,email,password_hash)
+            VALUES (%s,%s,%s)
+            """,
             (username, email, password_hash),
         )
         conn.commit()
