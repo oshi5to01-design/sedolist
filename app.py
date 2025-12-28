@@ -1,14 +1,15 @@
-import streamlit as st
-import psycopg2
-import pandas as pd
-import bcrypt
-import google.generativeai as genai
-from PIL import Image
 import json
 import os
-from dotenv import load_dotenv
 import secrets
 from datetime import datetime, timedelta
+
+import bcrypt
+import google.generativeai as genai
+import pandas as pd
+import psycopg2
+import streamlit as st
+from dotenv import load_dotenv
+from PIL import Image
 
 
 # -----------------------------------------------
@@ -598,7 +599,6 @@ if menu == "在庫一覧" or menu is None:
     )
 
     if view_mode == "表形式（PC向け）":
-
         display_df = df_items[
             ["id", "name", "price", "shop", "quantity", "memo", "created_at"]
         ]
@@ -682,7 +682,6 @@ if menu == "在庫一覧" or menu is None:
 
             # Expanderを作る
             with st.expander(f"{item_name}(残:{row['quantity']}個)"):
-
                 # 編集フォーム
                 # keyにitem_idをつけることで、どの商品の入力欄か区別する
                 new_name = st.text_input(
@@ -736,7 +735,6 @@ if menu == "在庫一覧" or menu is None:
 
 # ---B.在庫管理画面---
 elif menu == "仕入れ登録":
-
     # セッションステートの初期化
     if "input_name" not in st.session_state:
         st.session_state.input_name = ""
@@ -943,7 +941,6 @@ elif menu == "設定":
 
     # 退会するエリア
     with st.expander("退会（アカウント削除）", expanded=False):
-
         st.info("退会すると、登録した在庫データは全て完全に削除され、復元できません。")
 
         # 誤操作防止のチェックボックス
