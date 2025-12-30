@@ -9,11 +9,18 @@ load_dotenv()
 
 
 # -----------------------------------------------
-# データベース接続
+# データベース接続プールの作成
 # -----------------------------------------------
-def get_connection():
-    """環境変数を使ってPostgreSQLデータベースへの接続を確立する"""
-    return psycopg2.connect(
+@st.cache_resource
+def init_db_pool():
+    """
+    コネクションプールを作成してキャッシュする。
+    アプリ起動時に1回だけ実行され、あとは使い回される。
+    """
+
+    return psycopg2.pool.ThreadedConnectionPool(
+        minconn=1,
+        maxconn=10,
         host=os.getenv("DB_HOST"),
         port=os.getenv("DB_PORT"),
         database=os.getenv("DB_NAME"),
@@ -22,18 +29,31 @@ def get_connection():
     )
 
 
+def get_connection():
+    """コネクションプールから接続を取得する"""
+    db_pool = init_db_pool()
+    return db_pool.getconn()
+
+
+def release_connection(conn):
+    """コネクションプールに接続を返却する"""
+    if conn:
+        db_pool = init_db_pool()
+        db_pool.putconn(conn)
+
+
 # -----------------------------------------------
 # 在庫データ関連
 # -----------------------------------------------
-@st.cache_data(ttl=60)
 def load_items(user_id):
-    """指定されたユーザーの在庫データを全件取得し、DataFrameで返す"""
+    """指定されたユーザーの在庫データをデータフレームで取得する"""
     conn = get_connection()
-    # pandasを使ってSQLの結果をそのまま表データ(DataFrame)にする
-    query = "SELECT * FROM items WHERE user_id = %s ORDER BY id DESC;"
-    df = pd.read_sql(query, conn, params=(user_id,))
-    conn.close()
-    return df
+    try:
+        query = "SELECT * FROM items WHERE user_id = %s ORDER BY id DESC;"
+        df = pd.read_sql(query, conn, params=(user_id,))
+        return df
+    finally:
+        release_connection(conn)
 
 
 def register_item(user_id, name, price, shop, quantity, memo):
@@ -50,13 +70,14 @@ def register_item(user_id, name, price, shop, quantity, memo):
         conn.commit()
         st.success(f"{name}を登録しました！")
 
-        load_items.clear()
+        # load_items.clear()
 
     except Exception as e:
         conn.rollback()
         st.error(f"登録エラー:{e}")
     finally:
-        conn.close()
+        cursor.close()
+        release_connection(conn)
 
 
 def update_item(item_id, col_name, new_value):
@@ -74,12 +95,13 @@ def update_item(item_id, col_name, new_value):
         cursor.execute(sql, (new_value, item_id))
         conn.commit()
 
-        load_items.clear()
+        # load_items.clear()
 
     except Exception as e:
         st.error(f"更新エラー:{e}")
     finally:
-        conn.close()
+        cursor.close()
+        release_connection(conn)
 
 
 def delete_item(item_id):
@@ -94,12 +116,13 @@ def delete_item(item_id):
         cursor.execute("DELETE FROM items WHERE id = %s", (item_id,))
         conn.commit()
 
-        load_items.clear()
+        # load_items.clear()
 
     except Exception as e:
         st.error(f"削除エラー:{e}")
     finally:
-        conn.close()
+        cursor.close()
+        release_connection(conn)
 
 
 # -----------------------------------------------
@@ -117,7 +140,8 @@ def delete_user_account(user_id):
         st.error(f"退会処理エラー:{e}")
         return False
     finally:
-        conn.close()
+        cursor.close()
+        release_connection(conn)
 
 
 def update_username(user_id, new_username):
@@ -134,7 +158,8 @@ def update_username(user_id, new_username):
         st.error(f"更新エラー:{e}")
         return False
     finally:
-        conn.close()
+        cursor.close()
+        release_connection(conn)
 
 
 def get_user_email(user_id):
@@ -146,7 +171,8 @@ def get_user_email(user_id):
         result = cursor.fetchone()
         return result[0] if result else ""
     finally:
-        conn.close()
+        cursor.close()
+        release_connection(conn)
 
 
 def update_email(user_id, new_email):
@@ -168,4 +194,5 @@ def update_email(user_id, new_email):
             return False, "そのメールアドレスは既に使用されています"
         return False, f"更新エラー:{e}"
     finally:
-        conn.close()
+        cursor.close()
+        release_connection(conn)

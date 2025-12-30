@@ -5,7 +5,7 @@ import bcrypt
 import psycopg2
 import streamlit as st
 
-from database import get_connection
+from database import get_connection, release_connection
 
 
 def check_login(email, password):
@@ -19,7 +19,6 @@ def check_login(email, password):
         cursor.execute(
             "SELECT id,username,password_hash FROM users WHERE email = %s", (email,)
         )
-        # ★修正: fetchone
         user = cursor.fetchone()
         if user:
             user_id, username, password_hash = user
@@ -31,7 +30,8 @@ def check_login(email, password):
         st.error(f"ログインエラー:{e}")
         return None, None
     finally:
-        conn.close()
+        cursor.close()
+        release_connection(conn)
 
 
 def register_user(username, email, password):
@@ -45,7 +45,6 @@ def register_user(username, email, password):
 
     # パスワードのハッシュ化
     salt = bcrypt.gensalt()
-    # ★修正: encode
     password_hash = bcrypt.hashpw(password.encode("utf-8"), salt).decode("utf-8")
 
     try:
@@ -62,7 +61,8 @@ def register_user(username, email, password):
         conn.rollback()
         return False, f"登録エラー:{e}"
     finally:
-        conn.close()
+        cursor.close()
+        release_connection(conn)
 
 
 def change_password(user_id, current_password, new_password):
@@ -95,7 +95,8 @@ def change_password(user_id, current_password, new_password):
     except Exception as e:
         return False, f"エラーが発生しました:{e}"
     finally:
-        conn.close()
+        cursor.close()
+        release_connection(conn)
 
 
 def issue_reset_token(email):
@@ -133,7 +134,8 @@ def issue_reset_token(email):
         st.error(f"トークン発行エラー:{e}")
         return False
     finally:
-        conn.close()
+        cursor.close()
+        release_connection(conn)
 
 
 def verify_reset_token(token):
@@ -147,7 +149,8 @@ def verify_reset_token(token):
         (token, datetime.now()),
     )
     user = cursor.fetchone()
-    conn.close()
+    cursor.close()
+    release_connection(conn)
     return user
 
 
@@ -170,4 +173,5 @@ def reset_password(user_id, new_password):
         st.error(f"パスワード更新エラー:{e}")
         return False
     finally:
-        conn.close()
+        cursor.close()
+        release_connection(conn)
