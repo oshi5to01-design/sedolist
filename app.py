@@ -5,7 +5,19 @@ import streamlit as st
 
 import ai_logic as ai
 import auth
-import database as db
+from database import get_db
+
+# -----------------------------------------------
+# ページ設定
+# -----------------------------------------------
+st.set_page_config(page_title="せどりすと", page_icon="📦")
+
+
+# -----------------------------------------------
+# 初期化
+# -----------------------------------------------
+# アプリ起動時に一度だけDB管理クラスのインスタンスを作成
+db = get_db()
 
 
 # ----------------------------------------------
@@ -50,7 +62,7 @@ def show_inventory_screen():
             "登録日",
         ]
 
-        edited_df = st.data_editor(
+        st.data_editor(
             display_df,
             key="editor",
             column_config={
@@ -84,7 +96,7 @@ def show_inventory_screen():
                         if db_col:
                             # dbモジュールで更新
                             db.update_item(item_id, db_col, new_value)
-                            st.toast(f"ID:{item_id} の {col_name} を更新しました！")
+                            st.toast("更新しました！")
                 needs_rerun = True
 
             if changes["deleted_rows"]:
@@ -92,7 +104,7 @@ def show_inventory_screen():
                     item_id = df_items.iloc[index]["id"]
                     # dbモジュールで削除
                     db.delete_item(item_id)
-                    st.toast(f"ID:{item_id} を削除しました")
+                    st.toast("削除しました")
                 needs_rerun = True
 
             if needs_rerun:
@@ -135,7 +147,7 @@ def show_inventory_screen():
                         db.update_item(item_id, "quantity", new_quantity)
                         db.update_item(item_id, "shop", new_shop)
                         db.update_item(item_id, "memo", new_memo)
-                        st.toast(f"{new_name}を更新しました！")
+                        st.toast("更新しました！")
                         st.rerun()
                 with btn_col2:
                     if st.button(
@@ -199,7 +211,7 @@ def show_register_screen():
                 "登録する", type="primary", use_container_width=True
             )
         with btn_col2:
-            clear_btn = st.form_submit_button(
+            st.form_submit_button(
                 "入力をクリア", on_click=clear_form_state, use_container_width=True
             )
 
@@ -209,6 +221,7 @@ def show_register_screen():
                 db.register_item(
                     st.session_state.user_id, name, price, shop, quantity, memo
                 )
+                st.rerun()
             else:
                 st.warning("商品名は必須です！")
 
@@ -344,7 +357,7 @@ if st.sidebar.button("ログアウト"):
     st.session_state.user_id = None
     st.rerun()
 
-st.title("stock_manager")
+st.title("せどりすと")
 
 # サイドバーメニュー
 with st.sidebar:

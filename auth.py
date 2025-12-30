@@ -5,7 +5,7 @@ import bcrypt
 import psycopg2
 import streamlit as st
 
-from database import get_connection, release_connection
+from database import get_db
 
 
 def check_login(email, password):
@@ -13,7 +13,8 @@ def check_login(email, password):
     メールアドレスとパスワードでログイン認証を行う
     成功すれば(user_id,username)を返し、失敗すれば(None,None)を返す
     """
-    conn = get_connection()
+    db = get_db()
+    conn = db.get_connection()
     cursor = conn.cursor()
     try:
         cursor.execute(
@@ -31,7 +32,7 @@ def check_login(email, password):
         return None, None
     finally:
         cursor.close()
-        release_connection(conn)
+        db.release_connection(conn)
 
 
 def register_user(username, email, password):
@@ -40,7 +41,8 @@ def register_user(username, email, password):
     パスワードはハッシュ化して保存される
     戻り値:(成功したかどうかのTrue/False,メッセージ)
     """
-    conn = get_connection()
+    db = get_db()
+    conn = db.get_connection()
     cursor = conn.cursor()
 
     # パスワードのハッシュ化
@@ -62,14 +64,15 @@ def register_user(username, email, password):
         return False, f"登録エラー:{e}"
     finally:
         cursor.close()
-        release_connection(conn)
+        db.release_connection(conn)
 
 
 def change_password(user_id, current_password, new_password):
     """
     現在のパスワードを確認し、合っていれば新しいパスワード(ハッシュ化済み)に更新する
     """
-    conn = get_connection()
+    db = get_db()
+    conn = db.get_connection()
     cursor = conn.cursor()
     try:
         cursor.execute("SELECT password_hash FROM users WHERE id = %s", (user_id,))
@@ -96,7 +99,7 @@ def change_password(user_id, current_password, new_password):
         return False, f"エラーが発生しました:{e}"
     finally:
         cursor.close()
-        release_connection(conn)
+        db.release_connection(conn)
 
 
 def issue_reset_token(email):
@@ -104,7 +107,8 @@ def issue_reset_token(email):
     パスワードリセット用のトークンを発行し、DBに保存する。
     開発用のため、リセットURLはターミナルに出力する。
     """
-    conn = get_connection()
+    db = get_db()
+    conn = db.get_connection()
     cursor = conn.cursor()
 
     # ユーザー存在確認
@@ -135,14 +139,15 @@ def issue_reset_token(email):
         return False
     finally:
         cursor.close()
-        release_connection(conn)
+        db.release_connection(conn)
 
 
 def verify_reset_token(token):
     """
     URLに含まれるトークンが有効(期限内かつDBに存在)かチェックする。
     """
-    conn = get_connection()
+    db = get_db()
+    conn = db.get_connection()
     cursor = conn.cursor()
     cursor.execute(
         "SELECT id,email FROM users WHERE reset_token = %s AND reset_token_expires_at > %s",
@@ -150,7 +155,7 @@ def verify_reset_token(token):
     )
     user = cursor.fetchone()
     cursor.close()
-    release_connection(conn)
+    db.release_connection(conn)
     return user
 
 
@@ -158,10 +163,11 @@ def reset_password(user_id, new_password):
     """
     パスワードリセット用:新しいパスワードを設定し、使用済みトークンを削除する。
     """
+    db = get_db()
+    conn = db.get_connection()
+    cursor = conn.cursor()
     salt = bcrypt.gensalt()
     password_hash = bcrypt.hashpw(new_password.encode("utf-8"), salt).decode("utf-8")
-    conn = get_connection()
-    cursor = conn.cursor()
     try:
         cursor.execute(
             "UPDATE users SET password_hash = %s,reset_token = NULL,reset_token_expires_at = NULL WHERE id = %s",
@@ -174,4 +180,4 @@ def reset_password(user_id, new_password):
         return False
     finally:
         cursor.close()
-        release_connection(conn)
+        db.release_connection(conn)
