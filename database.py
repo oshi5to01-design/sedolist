@@ -25,6 +25,7 @@ def get_connection():
 # -----------------------------------------------
 # 在庫データ関連
 # -----------------------------------------------
+@st.cache_data(ttl=60)
 def load_items(user_id):
     """指定されたユーザーの在庫データを全件取得し、DataFrameで返す"""
     conn = get_connection()
@@ -48,6 +49,9 @@ def register_item(user_id, name, price, shop, quantity, memo):
         cursor.execute(sql, (user_id, name, price, shop, quantity, memo))
         conn.commit()
         st.success(f"{name}を登録しました！")
+
+        load_items.clear()
+
     except Exception as e:
         conn.rollback()
         st.error(f"登録エラー:{e}")
@@ -69,6 +73,9 @@ def update_item(item_id, col_name, new_value):
         sql = f"UPDATE items SET {col_name} = %s WHERE id = %s"
         cursor.execute(sql, (new_value, item_id))
         conn.commit()
+
+        load_items.clear()
+
     except Exception as e:
         st.error(f"更新エラー:{e}")
     finally:
@@ -86,6 +93,9 @@ def delete_item(item_id):
 
         cursor.execute("DELETE FROM items WHERE id = %s", (item_id,))
         conn.commit()
+
+        load_items.clear()
+
     except Exception as e:
         st.error(f"削除エラー:{e}")
     finally:
