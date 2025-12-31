@@ -1,19 +1,92 @@
 import os
+from datetime import datetime
 
 import pandas as pd
 import psycopg2
 import streamlit as st
 from dotenv import load_dotenv
-from psycopg2 import pool
+from sqlalchemy import (
+    Column,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    create_engine,
+)
+from sqlalchemy.orm import declarative_base, sessionmaker
 
 load_dotenv()
 
 
+# -----------------------------------------------
+# SQLAlchemyの設定(ORM)
+# -----------------------------------------------
+# データベースURLの構築
+DATABASE_URL = f"postgresql://{os.getenv('DB_USER')}:{os.getenv('DB_PASS')}@{os.getenv('DB_HOST')}:{os.getenv('DB_PORT')}/{os.getenv('DB_NAME')}"
+# エンジンの作成
+engine = create_engine(DATABASE_URL)
+# セッションの作成
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+# 親クラス
+Base = declarative_base()
+
+
+# -----------------------------------------------
+# モデル定義(テーブルの設計図)
+# -----------------------------------------------
+class UserModel(Base):
+    """usersテーブルのモデル"""
+
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String, unique=False)
+    email = Column(String, unique=True, nullable=False)
+    password_hash = Column(String, nullable=False)
+    reset_token = Column(String, nullable=True)
+    reset_token_expires_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.now)
+
+
+class ItemModel(Base):
+    """itemsテーブルのモデル"""
+
+    __tablename__ = "items"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
+    name = Column(String, nullable=False)
+    price = Column(Integer)
+    shop = Column(String)
+    quantity = Column(Integer)
+    memo = Column(Text)
+    created_at = Column(DateTime, default=datetime.now)
+
+
+class SessionModel(Base):
+    """sessionsテーブルのモデル"""
+
+    __tablename__ = "sessions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    session_id = Column(String, unique=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
+    expires_at = Column(DateTime)
+    created_at = Column(DateTime, default=datetime.now)
+
+
+# -----------------------------------------------
+# DatabaseManagerクラス
+# -----------------------------------------------
 class DatabaseManager:
     """データベース接続と操作を管理するクラス"""
 
     def __init__(self):
         """初期化: コネクションプールの作成"""
+
+        # テーブルが存在しない場合は作成する
+        Base.metadata.create_all(bind=engine)
 
         self.pool = pool.ThreadedConnectionPool(
             minconn=1,
@@ -175,6 +248,57 @@ class DatabaseManager:
         finally:
             cursor.close()
             self.release_connection(conn)
+
+    # -----------------------------------------------
+    # セッション管理メソッド(SQLAlchemyを使用)
+    # -----------------------------------------------
+    def create_session(self, user_id):
+        """新しいセッションを作成し、セッションIDを返す"""
+        db = SessionLocal()
+        try:
+            token = secrets.token_urlsafe(32)
+            expires = datetime.now() + timedelta(days=30)  # 30日間有効
+
+            # オブジェクトとしてデータを作成
+            new_session = SessionModel(
+                session_id=token, user_id=user_id, expires_at=expires
+            )
+            db.add(new_session)
+            db.commit()
+            return token, expires
+        except Exception as e:
+            print(f"セッション作成エラー:{e}")
+            return None, None
+        finally:
+            db.close()
+
+    def get_user_by_session(self, token):
+        """セッションIDからユーザーIDを取得する"""
+        db = SessionLocal()
+        try:
+            session = (
+                db.query(SessionModel)
+                .filter(
+                    SessionModel.session_id == token,
+                    SessionModel.expires_at > datetime.now(),
+                )
+                .first()
+            )
+
+            if session:
+                return session.user_id
+            return None
+        finally:
+            db.close()
+
+    def delete_session(self, token):
+        """ログアウト時にセッションを削除する"""
+        db = SessionLocal()
+        try:
+            db.query(SessionModel).filter(SessionModel.session_id == token).delete()
+            db.commit()
+        finally:
+            db.close()
 
 
 # -----------------------------------------------
