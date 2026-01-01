@@ -2,7 +2,6 @@ import os
 from datetime import datetime
 
 import pandas as pd
-import psycopg2
 import streamlit as st
 from dotenv import load_dotenv
 from sqlalchemy import (
@@ -25,7 +24,7 @@ load_dotenv()
 # データベースURLの構築
 DATABASE_URL = f"postgresql://{os.getenv('DB_USER')}:{os.getenv('DB_PASS')}@{os.getenv('DB_HOST')}:{os.getenv('DB_PORT')}/{os.getenv('DB_NAME')}"
 # エンジンの作成
-engine = create_engine(DATABASE_URL)
+engine = create_engine(DATABASE_URL, pool_size=10, max_overflow=20)
 # セッションの作成
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 # 親クラス
@@ -41,7 +40,7 @@ class UserModel(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
-    username = Column(String, unique=False)
+    username = Column(String, nullable=False)
     email = Column(String, unique=True, nullable=False)
     password_hash = Column(String, nullable=False)
     reset_token = Column(String, nullable=True)
@@ -88,215 +87,140 @@ class DatabaseManager:
         # テーブルが存在しない場合は作成する
         Base.metadata.create_all(bind=engine)
 
-        self.pool = pool.ThreadedConnectionPool(
-            minconn=1,
-            maxconn=10,
-            host=os.getenv("DB_HOST"),
-            port=os.getenv("DB_PORT"),
-            database=os.getenv("DB_NAME"),
-            user=os.getenv("DB_USER"),
-            password=os.getenv("DB_PASS"),
-        )
-
-    def get_connection(self):
-        """コネクションプールから接続を取得する"""
-        return self.pool.getconn()
-
-    def release_connection(self, conn):
-        """コネクションプールに接続を返却する"""
-        if conn:
-            self.pool.putconn(conn)
+    def get_db(self):
+        """セッションを作成して返す"""
+        return SessionLocal()
 
     # -----------------------------------------------
     # 在庫データ関連
     # -----------------------------------------------
     def load_items(self, user_id):
         """指定されたユーザーの在庫データをデータフレームで取得する"""
-        conn = self.get_connection()
-        try:
-            query = "SELECT * FROM items WHERE user_id = %s ORDER BY id DESC;"
+
+        query = "SELECT * FROM items WHERE user_id = %s ORDER BY id DESC;"
+
+        with engine.connect() as conn:
             df = pd.read_sql(query, conn, params=(user_id,))
-            return df
-        finally:
-            self.release_connection(conn)
+
+        return df
 
     def register_item(self, user_id, name, price, shop, quantity, memo):
         """新しい商品をデータベースに登録する"""
-        conn = self.get_connection()
-        cursor = conn.cursor()
-        sql = """
-        INSERT INTO items (user_id,name,price,shop,quantity,memo)
-        VALUES (%s,%s,%s,%s,%s,%s)
-        """
-
+        db = self.get_db()
         try:
-            cursor.execute(sql, (user_id, name, price, shop, quantity, memo))
-            conn.commit()
-            st.success(f"{name}を登録しました！")
-
+            new_item = ItemModel(
+                user_id=user_id,
+                name=name,
+                price=price,
+                shop=shop,
+                quantity=quantity,
+                memo=memo,
+            )
+            db.add(new_item)
+            db.commit()
+            st.success(f"「{name}」を登録しました！")
         except Exception as e:
-            conn.rollback()
+            db.rollback()
             st.error(f"登録エラー:{e}")
         finally:
-            cursor.close()
-            self.release_connection(conn)
+            db.close()
 
     def update_item(self, item_id, col_name, new_value):
         """指定された商品の特定の項目(カラム)を更新する"""
-        conn = self.get_connection()
-        cursor = conn.cursor()
+        db = self.get_db()
         try:
             # numpyの型変更対策
-            if hasattr(item_id, "item"):
-                item_id = item_id.item()
             if hasattr(new_value, "item"):
                 new_value = new_value.item()
+            if hasattr(item_id, "item"):
+                item_id = item_id.item()
 
-            sql = f"UPDATE items SET {col_name} = %s WHERE id = %s"
-            cursor.execute(sql, (new_value, item_id))
-            conn.commit()
+            item = db.query(ItemModel).filter(ItemModel.id == item_id).first()
+            if item:
+                setattr(item, col_name, new_value)
+                db.commit()
 
         except Exception as e:
+            db.rollback()
             st.error(f"更新エラー:{e}")
         finally:
-            cursor.close()
-            self.release_connection(conn)
+            db.close()
 
     def delete_item(self, item_id):
         """指定された商品をデータベースから削除する"""
-        conn = self.get_connection()
-        cursor = conn.cursor()
+        db = self.get_db()
         try:
             # numpyの型変更対策
             if hasattr(item_id, "item"):
                 item_id = item_id.item()
 
-            cursor.execute("DELETE FROM items WHERE id = %s", (item_id,))
-            conn.commit()
+            db.query(ItemModel).filter(ItemModel.id == item_id).delete()
+            db.commit()
 
         except Exception as e:
+            db.rollback()
             st.error(f"削除エラー:{e}")
         finally:
-            cursor.close()
-            self.release_connection(conn)
+            db.close()
 
     # -----------------------------------------------
     # ユーザー情報更新関連
     # -----------------------------------------------
     def delete_user_account(self, user_id):
         """ユーザーアカウントを削除する(関連する在庫データも連鎖して削除される)"""
-        conn = self.get_connection()
-        cursor = conn.cursor()
+        db = self.get_db()
         try:
-            cursor.execute("DELETE FROM users WHERE id = %s", (user_id,))
-            conn.commit()
+            db.query(UserModel).filter(UserModel.id == user_id).delete()
+            db.commit()
             return True
         except Exception as e:
             st.error(f"退会処理エラー:{e}")
             return False
         finally:
-            cursor.close()
-            self.release_connection(conn)
+            db.close()
 
     def update_username(self, user_id, new_username):
         """ユーザーの表示名を更新する"""
-        conn = self.get_connection()
-        cursor = conn.cursor()
+        db = self.get_db()
         try:
-            cursor.execute(
-                "UPDATE users SET username = %s WHERE id = %s", (new_username, user_id)
-            )
-            conn.commit()
-            return True
+            user = db.query(UserModel).filter(UserModel.id == user_id).first()
+            if user:
+                user.username = new_username
+                db.commit()
+                return True
+            return False
         except Exception as e:
             st.error(f"更新エラー:{e}")
             return False
         finally:
-            cursor.close()
-            self.release_connection(conn)
+            db.close()
 
     def get_user_email(self, user_id):
         """指定されたユーザーの現在のメールアドレスを取得する"""
-        conn = self.get_connection()
-        cursor = conn.cursor()
+        db = self.get_db()
         try:
-            cursor.execute("SELECT email FROM users WHERE id = %s", (user_id,))
-            result = cursor.fetchone()
-            return result[0] if result else ""
+            user = db.query(UserModel).filter(UserModel.id == user_id).first()
+            return user.email if user else ""
         finally:
-            cursor.close()
-            self.release_connection(conn)
+            db.close()
 
     def update_email(self, user_id, new_email):
         """ユーザーのメールアドレスを更新する(重複チェック付き)"""
-        conn = self.get_connection()
-        cursor = conn.cursor()
+        db = self.get_db()
         try:
-            cursor.execute(
-                "UPDATE users SET email = %s WHERE id = %s", (new_email, user_id)
-            )
-            conn.commit()
-            return True, "メールアドレスを変更しました！"
-        except psycopg2.errors.UniqueViolation:
-            conn.rollback()
-            return False, "そのメールアドレスは既に使用されています"
-        except Exception as e:
-            conn.rollback()
-            if "duplicate" in str(e):
+            existing = db.query(UserModel).filter(UserModel.email == new_email).first()
+            if existing:
                 return False, "そのメールアドレスは既に使用されています"
-            return False, f"更新エラー:{e}"
-        finally:
-            cursor.close()
-            self.release_connection(conn)
+            user = db.query(UserModel).filter(UserModel.id == user_id).first()
+            if user:
+                user.email = new_email
+                db.commit()
+                return True, "メールアドレスを更新しました"
+            return False, "ユーザーが見つかりません"
 
-    # -----------------------------------------------
-    # セッション管理メソッド(SQLAlchemyを使用)
-    # -----------------------------------------------
-    def create_session(self, user_id):
-        """新しいセッションを作成し、セッションIDを返す"""
-        db = SessionLocal()
-        try:
-            token = secrets.token_urlsafe(32)
-            expires = datetime.now() + timedelta(days=30)  # 30日間有効
-
-            # オブジェクトとしてデータを作成
-            new_session = SessionModel(
-                session_id=token, user_id=user_id, expires_at=expires
-            )
-            db.add(new_session)
-            db.commit()
-            return token, expires
         except Exception as e:
-            print(f"セッション作成エラー:{e}")
-            return None, None
-        finally:
-            db.close()
-
-    def get_user_by_session(self, token):
-        """セッションIDからユーザーIDを取得する"""
-        db = SessionLocal()
-        try:
-            session = (
-                db.query(SessionModel)
-                .filter(
-                    SessionModel.session_id == token,
-                    SessionModel.expires_at > datetime.now(),
-                )
-                .first()
-            )
-
-            if session:
-                return session.user_id
-            return None
-        finally:
-            db.close()
-
-    def delete_session(self, token):
-        """ログアウト時にセッションを削除する"""
-        db = SessionLocal()
-        try:
-            db.query(SessionModel).filter(SessionModel.session_id == token).delete()
-            db.commit()
+            db.rollback()
+            return False, f"更新エラー:{e}"
         finally:
             db.close()
 
