@@ -221,6 +221,8 @@ def show_register_screen():
                 db.register_item(
                     st.session_state.user_id, name, price, shop, quantity, memo
                 )
+                st.toast("登録しました！")
+                time.sleep(1)
                 st.rerun()
             else:
                 st.warning("商品名は必須です！")
