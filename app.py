@@ -219,7 +219,7 @@ def show_register_screen():
             if name:
                 # dbモジュールで登録
                 db.register_item(
-                    st.session_state.user_id, name, price, shop, quantity, memo
+                    st.session_state.user_id, name, price, quantity, shop, memo
                 )
                 st.toast("登録しました！")
                 time.sleep(1)

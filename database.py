@@ -1,5 +1,6 @@
 import os
 from datetime import datetime
+from typing import Any
 
 import pandas as pd
 import streamlit as st
@@ -13,6 +14,7 @@ from sqlalchemy import (
     Text,
     create_engine,
 )
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 load_dotenv()
@@ -28,7 +30,7 @@ engine = create_engine(DATABASE_URL, pool_size=10, max_overflow=20)
 # セッションの作成
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 # 親クラス
-Base = declarative_base()
+Base: Any = declarative_base()
 
 
 # -----------------------------------------------
@@ -94,7 +96,7 @@ class DatabaseManager:
     # -----------------------------------------------
     # 在庫データ関連
     # -----------------------------------------------
-    def load_items(self, user_id):
+    def load_items(self, user_id: int) -> pd.DataFrame:
         """指定されたユーザーの在庫データをデータフレームで取得する"""
 
         query = "SELECT * FROM items WHERE user_id = %s ORDER BY id DESC;"
@@ -104,7 +106,15 @@ class DatabaseManager:
 
         return df
 
-    def register_item(self, user_id, name, price, shop, quantity, memo):
+    def register_item(
+        self,
+        user_id: int,
+        name: str,
+        price: int,
+        quantity: int,
+        shop: str | None = None,
+        memo: str | None = None,
+    ):
         """新しい商品をデータベースに登録する"""
         db = self.get_db()
         try:
@@ -125,7 +135,7 @@ class DatabaseManager:
         finally:
             db.close()
 
-    def update_item(self, item_id, col_name, new_value):
+    def update_item(self, item_id: int, col_name: str, new_value: Any) -> None:
         """指定された商品の特定の項目(カラム)を更新する"""
         db = self.get_db()
         try:
@@ -146,7 +156,7 @@ class DatabaseManager:
         finally:
             db.close()
 
-    def delete_item(self, item_id):
+    def delete_item(self, item_id: int) -> None:
         """指定された商品をデータベースから削除する"""
         db = self.get_db()
         try:
@@ -166,7 +176,7 @@ class DatabaseManager:
     # -----------------------------------------------
     # ユーザー情報更新関連
     # -----------------------------------------------
-    def delete_user_account(self, user_id):
+    def delete_user_account(self, user_id: int) -> bool:
         """ユーザーアカウントを削除する(関連する在庫データも連鎖して削除される)"""
         db = self.get_db()
         try:
@@ -179,7 +189,7 @@ class DatabaseManager:
         finally:
             db.close()
 
-    def update_username(self, user_id, new_username):
+    def update_username(self, user_id: int, new_username: int | str) -> bool:
         """ユーザーの表示名を更新する"""
         db = self.get_db()
         try:
@@ -195,7 +205,7 @@ class DatabaseManager:
         finally:
             db.close()
 
-    def get_user_email(self, user_id):
+    def get_user_email(self, user_id: int) -> str:
         """指定されたユーザーの現在のメールアドレスを取得する"""
         db = self.get_db()
         try:
@@ -204,19 +214,20 @@ class DatabaseManager:
         finally:
             db.close()
 
-    def update_email(self, user_id, new_email):
-        """ユーザーのメールアドレスを更新する(重複チェック付き)"""
+    def update_email(self, user_id: int, new_email: str) -> tuple[bool, str]:
+        """ユーザーのメールアドレスを更新する"""
         db = self.get_db()
         try:
-            existing = db.query(UserModel).filter(UserModel.email == new_email).first()
-            if existing:
-                return False, "そのメールアドレスは既に使用されています"
             user = db.query(UserModel).filter(UserModel.id == user_id).first()
             if user:
                 user.email = new_email
                 db.commit()
                 return True, "メールアドレスを更新しました"
             return False, "ユーザーが見つかりません"
+
+        except IntegrityError:
+            db.rollback()
+            return False, "そのメールアドレスは既に使用されています"
 
         except Exception as e:
             db.rollback()
