@@ -1,5 +1,6 @@
 import json
 import os
+from typing import Any
 
 import google.generativeai as genai
 import streamlit as st
@@ -13,7 +14,7 @@ load_dotenv()
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
 
-def analyze_image_with_gemini(uploaded_file):
+def analyze_image_with_gemini(uploaded_file: Any) -> dict[str, Any] | None:
     """
     アップロードされた画像をGeminiに渡し、商品名と価格を抽出する。
 
@@ -47,7 +48,7 @@ def analyze_image_with_gemini(uploaded_file):
 
         # AIに聞く
         with st.spinner("AIが画像を解析中"):
-            response = model.generate_content([prompt, image])
+            response = model.generate_content([prompt, image])  # type: ignore
             text = response.text
 
             # JSON形式の文字列を探して取り出す

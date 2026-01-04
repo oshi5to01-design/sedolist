@@ -7,7 +7,7 @@ import streamlit as st
 from database import SessionLocal, UserModel
 
 
-def check_login(email, password):
+def check_login(email: str, password: str) -> tuple[int, str] | tuple[None, None]:
     """
     メールアドレスとパスワードでログイン認証を行う
     成功すれば(user_id,username)を返し、失敗すれば(None,None)を返す
@@ -20,7 +20,7 @@ def check_login(email, password):
             if bcrypt.checkpw(
                 password.encode("utf-8"), user.password_hash.encode("utf-8")
             ):
-                return user.id, user.username
+                return int(user.id), str(user.username)
         return None, None
     except Exception as e:
         st.error(f"ログインエラー:{e}")
@@ -29,7 +29,7 @@ def check_login(email, password):
         db.close()
 
 
-def register_user(username, email, password):
+def register_user(username: str, email: str, password: str) -> tuple[bool, str]:
     """
     新しいユーザーを登録する
     パスワードはハッシュ化して保存される
@@ -59,7 +59,9 @@ def register_user(username, email, password):
         db.close()
 
 
-def change_password(user_id, current_password, new_password):
+def change_password(
+    user_id: int, current_password: str, new_password: str
+) -> tuple[bool, str]:
     """
     現在のパスワードを確認し、合っていれば新しいパスワード(ハッシュ化済み)に更新する
     """
@@ -79,7 +81,7 @@ def change_password(user_id, current_password, new_password):
         # 新しいパスワードをハッシュ化して更新
         salt = bcrypt.gensalt()
         new_hash = bcrypt.hashpw(new_password.encode("utf-8"), salt).decode("utf-8")
-        user.password_hash = new_hash
+        user.password_hash = str(new_hash)  # type: ignore
         db.commit()
         return True, "パスワードを変更しました！"
     except Exception as e:
@@ -88,7 +90,7 @@ def change_password(user_id, current_password, new_password):
         db.close()
 
 
-def issue_reset_token(email):
+def issue_reset_token(email: str) -> bool:
     """
     パスワードリセット用のトークンを発行し、DBに保存する。
     開発用のため、リセットURLはターミナルに出力する。
@@ -105,8 +107,8 @@ def issue_reset_token(email):
         token = secrets.token_urlsafe(32)
         expires_at = datetime.now() + timedelta(hours=1)
 
-        user.reset_token = token
-        user.reset_token_expires_at = expires_at
+        user.reset_token = token  # type: ignore
+        user.reset_token_expires_at = expires_at  # type: ignore
         db.commit()
 
         # URL生成と表示
@@ -122,7 +124,7 @@ def issue_reset_token(email):
         db.close()
 
 
-def verify_reset_token(token):
+def verify_reset_token(token: str) -> tuple[int, str] | None:
     """
     URLに含まれるトークンが有効(期限内かつDBに存在)かチェックする。
     """
@@ -138,13 +140,13 @@ def verify_reset_token(token):
         )
 
         if user:
-            return (user.id, user.email)
+            return (int(user.id), str(user.email))
         return None
     finally:
         db.close()
 
 
-def reset_password(user_id, new_password):
+def reset_password(user_id: int, new_password: str) -> bool:
     """
     パスワードリセット用:新しいパスワードを設定し、使用済みトークンを削除する。
     """
@@ -155,9 +157,9 @@ def reset_password(user_id, new_password):
             salt = bcrypt.gensalt()
             user.password_hash = bcrypt.hashpw(
                 new_password.encode("utf-8"), salt
-            ).decode("utf-8")
-            user.reset_token = None
-            user.reset_token_expires_at = None
+            ).decode("utf-8")  # type: ignore
+            user.reset_token = None  # type: ignore
+            user.reset_token_expires_at = None  # type: ignore
             db.commit()
             return True
         return False

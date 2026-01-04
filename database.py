@@ -114,7 +114,7 @@ class DatabaseManager:
         quantity: int,
         shop: str | None = None,
         memo: str | None = None,
-    ):
+    ) -> None:
         """新しい商品をデータベースに登録する"""
         db = self.get_db()
         try:
@@ -189,7 +189,7 @@ class DatabaseManager:
         finally:
             db.close()
 
-    def update_username(self, user_id: int, new_username: int | str) -> bool:
+    def update_username(self, user_id: int, new_username: str) -> bool:
         """ユーザーの表示名を更新する"""
         db = self.get_db()
         try:
