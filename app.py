@@ -23,7 +23,7 @@ db = get_db()
 # ----------------------------------------------
 # UI用ヘルパー関数
 # ----------------------------------------------
-def clear_form_state():
+def clear_form_state() -> None:
     """入力フォームをクリアするコールバック関数"""
     st.session_state.input_name = ""
     st.session_state.input_price = 0
@@ -36,7 +36,7 @@ def clear_form_state():
 # 高速化エリア(Fragment)
 # -----------------------------------------------
 @st.fragment
-def show_inventory_screen():
+def show_inventory_screen() -> None:
     """在庫一覧画面(部分更新対応)"""
     st.subheader("現在の在庫一覧")
 
@@ -163,7 +163,7 @@ def show_inventory_screen():
 
 
 @st.fragment
-def show_register_screen():
+def show_register_screen() -> None:
     """仕入れ登録画面(部分更新対応)"""
     # セッションステート初期化
     if "input_name" not in st.session_state:

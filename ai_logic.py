@@ -1,7 +1,7 @@
 import json
 import os
 from typing import Any
-
+import re
 import google.generativeai as genai
 import streamlit as st
 from dotenv import load_dotenv
@@ -17,13 +17,6 @@ genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 def analyze_image_with_gemini(uploaded_file: Any) -> dict[str, Any] | None:
     """
     アップロードされた画像をGeminiに渡し、商品名と価格を抽出する。
-
-    Args:
-        uploaded_file: Streamlitのfile_uploaderやcamera_inputから渡される画像データ
-
-    Returns:
-        dict: {"name":"商品名","price":1000}のような辞書データ。
-            失敗した場合は None を返す。
     """
     try:
         # 画像を読み込む
@@ -51,13 +44,15 @@ def analyze_image_with_gemini(uploaded_file: Any) -> dict[str, Any] | None:
             response = model.generate_content([prompt, image])  # type: ignore
             text = response.text
 
-            # JSON形式の文字列を探して取り出す
-            # (Geminiが```json...```で囲ってくることがあるための除去)
-            clean_text = text.replace("```json", "").replace("```", "").strip()
+            match = re.search(r"\{.*\}", text, re.DOTALL)
 
-            # 辞書データに変換
-            result = json.loads(clean_text)
-            return result
+            if match:
+                json_str = match.group()  # マッチした部分（JSON文字列）を取り出す
+                result = json.loads(json_str)
+                return result
+            else:
+                st.error("AIからの応答にJSONが含まれていませんでした。")
+                return None
 
     except Exception as e:
         st.error(f"AI解析エラー:{e}")

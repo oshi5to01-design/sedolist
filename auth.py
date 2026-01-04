@@ -3,8 +3,28 @@ from datetime import datetime, timedelta
 
 import bcrypt
 import streamlit as st
+from sqlalchemy.orm import Session
 
 from database import SessionLocal, UserModel
+
+
+def cleanup_expired_tokens(db: Session) -> None:
+    """
+    有効期限切れのリセットトークンを削除する
+    """
+    try:
+        now = datetime.now()
+        # 期限切れかつトークンが残っているユーザーを検索して更新
+        db.query(UserModel).filter(UserModel.reset_token_expires_at < now).update(
+            {
+                UserModel.reset_token: None,
+                UserModel.reset_token_expires_at: None,
+            },
+            synchronize_session=False,
+        )
+        db.commit()
+    except Exception:
+        pass  # クリーンアップ失敗はメイン処理に影響させない
 
 
 def check_login(email: str, password: str) -> tuple[int, str] | tuple[None, None]:
@@ -20,6 +40,7 @@ def check_login(email: str, password: str) -> tuple[int, str] | tuple[None, None
             if bcrypt.checkpw(
                 password.encode("utf-8"), user.password_hash.encode("utf-8")
             ):
+                cleanup_expired_tokens(db)
                 return int(user.id), str(user.username)
         return None, None
     except Exception as e:
