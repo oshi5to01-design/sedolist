@@ -1,8 +1,10 @@
+import os
 import secrets
 from datetime import datetime, timedelta
 
 import bcrypt
 import streamlit as st
+from mail_service import send_reset_email
 from sqlalchemy.orm import Session
 
 from database import SessionLocal, UserModel
@@ -113,8 +115,7 @@ def change_password(
 
 def issue_reset_token(email: str) -> bool:
     """
-    パスワードリセット用のトークンを発行し、DBに保存する。
-    開発用のため、リセットURLはターミナルに出力する。
+    パスワードリセット用のトークンを発行し、メールを送信する。
     """
     db = SessionLocal()
 
@@ -128,16 +129,21 @@ def issue_reset_token(email: str) -> bool:
         token = secrets.token_urlsafe(32)
         expires_at = datetime.now() + timedelta(hours=1)
 
-        user.reset_token = token  # type: ignore
+        user.reset_token = str(token)  # type: ignore
         user.reset_token_expires_at = expires_at  # type: ignore
         db.commit()
 
-        # URL生成と表示
-        reset_url = f"http://localhost:8501/?token={token}"
-        print("\n" + "=" * 50)
-        print(f"【開発用メール】パスワードリセットURL:{reset_url}")
-        print("=" * 50 + "\n")
-        return True
+        # URL生成
+        base_url = os.getenv("APP_URL", "http://localhost:8501")
+        reset_url = f"{base_url}/?token={token}"
+
+        # メール送信
+        if send_reset_email(email, reset_url):
+            return True
+        else:
+            st.error("メール送信に失敗しました。再度お試しください。")
+            return False
+
     except Exception as e:
         st.error(f"トークン発行エラー:{e}")
         return False

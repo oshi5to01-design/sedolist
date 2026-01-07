@@ -265,7 +265,7 @@ if reset_token:
                     if auth.reset_password(user[0], new_pw):
                         st.success("パスワードを変更しました！")
                         st.info("ログイン画面に戻ります")
-                        time.sleep(2)
+                        time.sleep(3)
                         st.query_params.clear()
                         st.rerun()
     else:
@@ -334,7 +334,7 @@ if not st.session_state.logged_in:
     # --- リセット申請 ---
     with tab3:
         st.write("登録したメールアドレスを入力してください。")
-        st.info("開発モードのため、リセット用URLはターミナルに表示されます。")
+
         with st.form("reset_request_form"):
             reset_email = st.text_input("メールアドレス")
             submitted_reset = st.form_submit_button("リセットリンクを発行")
@@ -342,8 +342,10 @@ if not st.session_state.logged_in:
             if submitted_reset:
                 # authモジュールでトークン発行
                 if auth.issue_reset_token(reset_email):
-                    st.success("リセット用URLを発行しました！")
-                    st.warning("ターミナルを確認してください！")
+                    st.success("パスワード再設定メールを送信しました。")
+                    st.info(
+                        "メールボックスを確認し、本文内のリンクをクリックしてください。"
+                    )
                 else:
                     st.error("そのメールアドレスは見つかりません。")
 
