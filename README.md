@@ -4,6 +4,108 @@
 「現場で使える」をコンセプトに、スマホでの操作性やAIによる入力補助を重視して開発しました。
 StreamlitによるシンプルなUIと、Google Gemini APIを活用した値札画像からの自動入力機能が特徴です。
 
+## システム構成図(System Architecture)
+
+```mermaid
+graph LR
+    %% 定義エリア
+    User((ユーザー))
+    Dev((開発者))
+    
+    subgraph Local [ローカル開発環境]
+        VSCode["VS Code / uv"]~~~
+        Docker["Docker<br>(開発用DB)"]
+    end
+
+    subgraph Cloud [Render Cloud]
+        Streamlit["Streamlit App<br>(Python 3.13)"]
+        Postgres[("PostgreSQL<br>本番DB")]
+    end
+
+    subgraph External [外部サービス]
+        GitHub["GitHub<br>(リポジトリ)"]
+        Gemini["Google Gemini API<br>(画像解析)"]
+        Gmail["Gmail SMTP<br>(メール送信)"]
+    end
+
+    %% 接続線
+    User -- ブラウザ/スマホ --> Streamlit
+    Dev -- git push --> GitHub
+    GitHub -- 自動デプロイ --> Streamlit
+    
+    Streamlit -- 読み書き --> Postgres
+    Streamlit -- 画像データ --> Gemini
+    Gemini -- JSON --> Streamlit
+    Streamlit -- リセット要求 ---> Gmail
+    Gmail -- メール通知 --> User
+
+    %% スタイル調整
+    style Streamlit fill:#ff4b4b,stroke:#333,stroke-width:2px,color:white
+    style Postgres fill:#336791,stroke:#333,stroke-width:2px,color:white
+    style Gemini fill:#4285F4,stroke:#333,stroke-width:2px,color:white
+```
+
+## 内部構造図 (Internal Structure)
+
+```mermaid
+graph LR
+    subgraph App ["せどりすと App"]
+        Main["app.py<br>(UI / 画面遷移)"]
+        
+        subgraph Modules ["ロジックモジュール"]
+            Auth["auth.py<br>(認証・メール)"]
+            DB["database.py<br>(DB操作 / ORM)"]
+            AI["ai_logic.py<br>(Gemini連携)"]
+        end
+    end
+
+    Main ---> Auth
+    Main ---> DB
+    Main ---> AI
+    
+    Auth ---> DB
+    Auth --->|メール送信| MailService["mail_service.py"]
+```
+
+## ER図
+
+```mermaid
+erDiagram
+    users ||--o{ items : "1人が多数を所持"
+    users ||--o{ sessions : "1人が多数を所持"
+
+    users {
+        int id PK
+        string username
+        string email UK
+        string password_hash
+        string reset_token
+        datetime reset_token_expires_at
+        datetime created_at
+    }
+
+    items {
+        int id PK
+        int user_id FK
+        string name
+        int price
+        string shop
+        int quantity
+        text memo
+        datetime created_at
+    }
+
+    sessions {
+        int id PK
+        string session_id UK
+        int user_id FK
+        datetime expires_at
+        datetime created_at
+    }
+```
+
+
+
 ## ✨ 主な機能
 
 - **📱 スマホ完全対応**: 登録済み商品を一覧表示。PC向け（表形式）とスマホ向け（カード形式）の表示切り替えが可能。
