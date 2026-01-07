@@ -1,0 +1,40 @@
+name: Automated Tests (CI)
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    # 1. リポジトリのコードをチェックアウト
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    # 2. uv をインストール
+    - name: Install uv
+      uses: astral-sh/setup-uv@v5
+      with:
+        python-version: "3.13"
+        enable-cache: true
+
+    # 3. 依存関係のインストール
+    - name: Install dependencies
+      run: uv sync --all-extras --dev
+
+    # 4. テスト実行
+    # .envがないとエラーになる場合があるので、ダミーの環境変数を渡す
+    - name: Run pytest
+      env:
+        DB_HOST: localhost
+        DB_PORT: 5432
+        DB_NAME: test_db
+        DB_USER: user
+        DB_PASS: password
+        GEMINI_API_KEY: dummy_key
+        DISCORD_WEBHOOK_URL: ""
+      run: uv run pytest
