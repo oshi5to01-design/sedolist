@@ -4,6 +4,10 @@
 「現場で使える」をコンセプトに、スマホでの操作性やAIによる入力補助を重視して開発しました。
 StreamlitによるシンプルなUIと、Google Gemini APIを活用した値札画像からの自動入力機能が特徴です。
 
+## GitHub Actions
+[![Automated Tests (CI)](https://github.com/oshi5to01-design/stock_manager/actions/workflows/test.yml/badge.svg)](https://github.com/oshi5to01-design/stock_manager/actions/workflows/test.yml)
+
+
 ## システム構成図(System Architecture)
 
 ```mermaid
