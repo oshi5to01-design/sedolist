@@ -4,10 +4,10 @@ from datetime import datetime, timedelta
 
 import bcrypt
 import streamlit as st
-from mail_service import send_reset_email
 from sqlalchemy.orm import Session
 
 from database import SessionLocal, UserModel
+from mail_service import send_reset_email
 
 
 def cleanup_expired_tokens(db: Session) -> None:
@@ -29,6 +29,32 @@ def cleanup_expired_tokens(db: Session) -> None:
         pass  # クリーンアップ失敗はメイン処理に影響させない
 
 
+def cleanup_expired_guests(db: Session) -> None:
+    """作成から24時間経過したゲストユーザーを削除する"""
+    try:
+        # 24時間前の時間を計算
+        cutoff_time = datetime.now() - timedelta(hours=24)
+        # 条件
+        # guestユーザーかつ作成日時が24時間前以前
+        deleted_count = (
+            db.query(UserModel)
+            .filter(
+                UserModel.email.like("guest_%@example.com"),
+                UserModel.created_at < cutoff_time,
+            )
+            .delete(synchronize_session=False)
+        )
+
+        db.commit()
+
+        if deleted_count > 0:
+            print(f"期限切れのゲストユーザーを削除しました: {deleted_count}件")
+
+    except Exception as e:
+        print(f"ゲストユーザーのクリーンアップに失敗しました: {e}")
+        db.rollback()
+
+
 def check_login(email: str, password: str) -> tuple[int, str] | tuple[None, None]:
     """
     メールアドレスとパスワードでログイン認証を行う
@@ -43,6 +69,7 @@ def check_login(email: str, password: str) -> tuple[int, str] | tuple[None, None
                 password.encode("utf-8"), user.password_hash.encode("utf-8")
             ):
                 cleanup_expired_tokens(db)
+                cleanup_expired_guests(db)
                 return int(user.id), str(user.username)
         return None, None
     except Exception as e:
@@ -80,6 +107,27 @@ def register_user(username: str, email: str, password: str) -> tuple[bool, str]:
         return False, f"登録エラー:{e}"
     finally:
         db.close()
+
+
+def login_as_guest() -> tuple[int, str] | tuple[None, None]:
+    """
+    ゲストユーザーとしてログインする
+    """
+    # ランダムなゲストIDを生成
+    guest_id = secrets.token_hex(4)
+    username = f"Guest_{guest_id}"
+    email = f"guest_{guest_id}@example.com"
+    password = secrets.token_urlsafe(10)
+
+    # 既存の登録関数を使って登録
+    success, msg = register_user(username, email, password)
+
+    if success:
+        # 登録成功
+        return check_login(email, password)
+    else:
+        # 登録失敗
+        return None, None
 
 
 def change_password(

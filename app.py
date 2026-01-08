@@ -308,6 +308,20 @@ if not st.session_state.logged_in:
                 else:
                     st.error("メールアドレスかパスワードが間違っています")
 
+    # --- ゲストログイン ---
+    st.markdown("---")
+    if st.button("ゲストログイン", use_container_width=True):
+        user_id, username = auth.login_as_guest()
+        if user_id:
+            st.session_state.logged_in = True
+            st.session_state.user_id = user_id
+            st.session_state.username = username
+            st.toast("ゲストログインしました！")
+            time.sleep(1)
+            st.rerun()
+        else:
+            st.error("ゲストログインに失敗しました。")
+
     # --- 新規登録 ---
     with tab2:
         st.write("新しくアカウントを作成します。")
