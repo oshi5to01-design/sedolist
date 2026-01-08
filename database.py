@@ -135,6 +135,107 @@ class DatabaseManager:
         finally:
             db.close()
 
+    # ---------------------------------------------
+    # サンプルデータ作成 (ゲスト用)
+    # ---------------------------------------------
+    def create_sample_items(self, user_id: int) -> None:
+        """ゲストユーザー用にサンプルデータを一括登録する"""
+        db = self.get_db()
+
+        # サンプルデータのリスト
+        samples = [
+            {
+                "name": "ゲーミングマウス G502",
+                "price": 5800,
+                "shop": "Amazon",
+                "quantity": 3,
+                "memo": "人気商品。セール時に確保。",
+            },
+            {
+                "name": "メカニカルキーボード 赤軸",
+                "price": 12000,
+                "shop": "楽天",
+                "quantity": 1,
+                "memo": "箱に少し傷あり。",
+            },
+            {
+                "name": "USB-C ハブ 7-in-1",
+                "price": 3500,
+                "shop": "家電量販店A",
+                "quantity": 5,
+                "memo": "",
+            },
+            {
+                "name": "ノイズキャンセリングヘッドホン",
+                "price": 24000,
+                "shop": "Amazon",
+                "quantity": 2,
+                "memo": "ブラックフライデー仕入れ",
+            },
+            {
+                "name": "スマホスタンド (アルミ)",
+                "price": 1500,
+                "shop": "100均一(高額枠)",
+                "quantity": 10,
+                "memo": "回転率よし",
+            },
+            {
+                "name": "4Kモニター 27インチ",
+                "price": 32000,
+                "shop": "中古PCショップ",
+                "quantity": 1,
+                "memo": "ドット抜けなし確認済み",
+            },
+            {
+                "name": "HDMIケーブル 2m",
+                "price": 800,
+                "shop": "Amazon",
+                "quantity": 20,
+                "memo": "ついで買い狙い",
+            },
+            {
+                "name": "Webカメラ 1080p",
+                "price": 4500,
+                "shop": "メルカリ",
+                "quantity": 0,
+                "memo": "売り切れ。再入荷待ち。",
+            },
+            {
+                "name": "デスクマット (大型)",
+                "price": 2200,
+                "shop": "AliExpress",
+                "quantity": 4,
+                "memo": "到着まで2週間かかった",
+            },
+            {
+                "name": "LEDデスクライト",
+                "price": 3800,
+                "shop": "IKEA",
+                "quantity": 2,
+                "memo": "",
+            },
+        ]
+
+        try:
+            for item in samples:
+                new_item = ItemModel(
+                    user_id=user_id,
+                    name=item["name"],
+                    price=item["price"],
+                    shop=item["shop"],
+                    quantity=item["quantity"],
+                    memo=item["memo"],
+                )
+                db.add(new_item)
+
+            db.commit()
+
+        except Exception as e:
+            db.rollback()
+            print(f"サンプルデータ作成エラー: {e}")
+        finally:
+            db.close()
+
     def update_item(self, item_id: int, col_name: str, new_value: Any) -> None:
         """指定された商品の特定の項目(カラム)を更新する"""
         db = self.get_db()

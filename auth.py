@@ -6,7 +6,7 @@ import bcrypt
 import streamlit as st
 from sqlalchemy.orm import Session
 
-from database import SessionLocal, UserModel
+from database import SessionLocal, UserModel, get_db
 from mail_service import send_reset_email
 
 
@@ -124,10 +124,14 @@ def login_as_guest() -> tuple[int, str] | tuple[None, None]:
 
     if success:
         # 登録成功
-        return check_login(email, password)
-    else:
-        # 登録失敗
-        return None, None
+        user_id, user_name = check_login(email, password)
+        if user_id:
+            db = get_db()
+            db.create_sample_items(user_id)
+            return user_id, str(user_name)
+
+    # 登録失敗
+    return None, None
 
 
 def change_password(
