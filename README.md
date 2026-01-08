@@ -7,6 +7,12 @@ StreamlitによるシンプルなUIと、Google Gemini APIを活用した値札�
 ## GitHub Actions
 [![Automated Tests (CI)](https://github.com/oshi5to01-design/stock_manager/actions/workflows/test.yml/badge.svg)](https://github.com/oshi5to01-design/stock_manager/actions/workflows/test.yml)
 
+## 動作デモ
+
+スマホでの操作イメージです。カメラ起動からAI解析、登録までスムーズに行えます。
+
+![デモ動画](./images/demo.gif)
+
 
 ## システム構成図(System Architecture)
 
@@ -128,9 +134,35 @@ erDiagram
 - **ORM**: SQLAlchemy
 - **AI**: Google Gemini API (`google-generativeai`)
 - **Infrastructure**: Docker(Local),Render(Production)
+- **CI/CD**: GitHub Actions
 - **Package Manager**: uv
 - **Linter/Formatter**: ruff
 - **Testing**: pytest
+- **Mail Service**: Gmail SMTP
+
+## 機能紹介
+
+### 📸 ログイン画面
+
+<p float="left">
+  <img src="./images/demo.png" width="80%" />
+</p>
+
+### 📸 在庫一覧画面
+
+<p float="left">
+  <img src="./images/demo1.png" width="30%" />
+  <img src="./images/demo2.png" width="30%" /> 
+  <img src="./images/demo3.png" width="30%" />
+</p>
+
+### 📸 設定等 
+
+<p float="left">
+  <img src="./images/demo4.png" width="30%" />
+  <img src="./images/demo5.png" width="30%" /> 
+</p>
+
 
 ## 🚀 ローカルでのセットアップ手順
 uv と Docker を使用しているため、コマンド数回で環境が整います。
@@ -190,15 +222,15 @@ uv run pytest
 
 ## 📁 ディレクトリ構成
 
-stock_manager/
-├── app.py           # メインアプリケーション (UI)
-├── database.py      # データベース操作 (SQLAlchemy)
-├── auth.py          # 認証ロジック (ログイン・登録)
-├── ai_logic.py      # AI連携ロジック (Gemini)
-├── tests/           # テストコード
-├── docker-compose.yml # ローカルDB構成
-├── pyproject.toml   # 依存関係管理 (uv)
-└── requirements.txt # Renderデプロイ用
+stock_manager/ <br>
+├── app.py           # メインアプリケーション (UI) <br>
+├── database.py      # データベース操作 (SQLAlchemy) <br>
+├── auth.py          # 認証ロジック (ログイン・登録) <br>
+├── ai_logic.py      # AI連携ロジック (Gemini) <br>
+├── tests/           # テストコード <br>
+├── docker-compose.yml # ローカルDB構成 <br>
+├── pyproject.toml   # 依存関係管理 (uv) <br>
+└── requirements.txt # Renderデプロイ用 <br>
 
 ## 📝 ライセンス
 
