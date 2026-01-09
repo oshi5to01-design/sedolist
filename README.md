@@ -1,11 +1,14 @@
 # せどりすと (Stock Manager) 📦
 
-個人せどらー向けの在庫管理・商品登録支援アプリケーションです。
-「現場で使える」をコンセプトに、スマホでの操作性やAIによる入力補助を重視して開発しました。
-StreamlitによるシンプルなUIと、Google Gemini APIを活用した値札画像からの自動入力機能が特徴です。
+個人せどらーさん向けの在庫管理・商品登録支援アプリケーションです。
+「現場でスプレッドシートをスマホ入力するのは操作性が悪い」という課題に着目し、「現場でストレスなく使える」をコンセプトに開発しました。
+StreamlitによるシンプルなUIと、Google Gemini APIを活用した値札画像からの自動入力機能により、仕入れ時の入力作業を効率化します。
 
 ## GitHub Actions
 [![Automated Tests (CI)](https://github.com/oshi5to01-design/stock_manager/actions/workflows/test.yml/badge.svg)](https://github.com/oshi5to01-design/stock_manager/actions/workflows/test.yml)
+
+## アプリURL
+https://sedolist.onrender.com
 
 ## 動作デモ
 
