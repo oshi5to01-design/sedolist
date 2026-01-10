@@ -7,14 +7,6 @@ from unittest.mock import MagicMock, patch
 # testsディレクトリをパスに追加
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# streamlitをモック
-sys.modules["streamlit"] = MagicMock()
-sys.modules["streamlit.logger"] = MagicMock()
-
-# databaseをモック
-db_mock = MagicMock()
-sys.modules["database"] = db_mock
-
 import auth
 
 

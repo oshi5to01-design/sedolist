@@ -10,17 +10,24 @@ from database import DatabaseManager, ItemModel, UserModel
 def db_manager(db_session):
     """
     テスト用のDatabaseManagerインスタンスを生成する。
-    本番DBへの接続を防ぐため、__init__をスキップし、
-    get_dbがテスト用セッションを返すように書き換える。
+    本番DBへの接続を防ぐため、__init__を一時的に無効化する。
     """
-    with patch.object(DatabaseManager, "__init__", return_value=None):
+    # __init__を退避して無効化
+    original_init = DatabaseManager.__init__
+    DatabaseManager.__init__ = lambda self: None
+
+    try:
         manager = DatabaseManager()
+
         # インスタンスのget_dbメソッドをモック化して、常にテスト用セッションを返すようにする
-        # テスト用セッションはfixture側で管理するため、アプリコード内でのclose()は無効化する
         session_mock = MagicMock(wraps=db_session)
         session_mock.close = MagicMock()  # closeを何もしないようにオーバーライド
         manager.get_db = MagicMock(return_value=session_mock)
+
         yield manager
+    finally:
+        # __init__を元に戻す
+        DatabaseManager.__init__ = original_init
 
 
 def test_register_item(db_manager, db_session):
