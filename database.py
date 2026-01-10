@@ -13,6 +13,8 @@ from sqlalchemy import (
     String,
     Text,
     create_engine,
+    inspect,
+    text,
 )
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import declarative_base, sessionmaker
@@ -84,7 +86,21 @@ class DatabaseManager:
     """データベース接続と操作を管理するクラス"""
 
     def __init__(self):
-        """初期化: コネクションプールの作成"""
+        """初期化: コネクションプールの作成とマイグレーション"""
+
+        # 簡易マイグレーション: sessionsテーブルのスキーマ確認
+        inspector = inspect(engine)
+        if inspector.has_table("sessions"):
+            columns = [c["name"] for c in inspector.get_columns("sessions")]
+            # 旧カラム(session_id)があり、新カラム(session_hash)がない場合は再作成
+            if "session_id" in columns and "session_hash" not in columns:
+                print("Old sessions table detected. Recreating...")
+                try:
+                    with engine.connect() as conn:
+                        conn.execute(text("DROP TABLE sessions CASCADE"))
+                        conn.commit()
+                except Exception as e:
+                    print(f"Migration error: {e}")
 
         # テーブルが存在しない場合は作成する
         Base.metadata.create_all(bind=engine)
