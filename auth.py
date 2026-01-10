@@ -1,3 +1,4 @@
+import hashlib
 import os
 import secrets
 from datetime import datetime, timedelta
@@ -247,3 +248,58 @@ def reset_password(user_id: int, new_password: str) -> bool:
         return False
     finally:
         db.close()
+
+
+# -----------------------------------------------
+# セッション管理 (永続ログイン)
+# -----------------------------------------------
+def create_session_token(user_id: int) -> str:
+    """
+    セッションを作成し、クッキー用のトークンを返す。
+    DBにはハッシュ化したトークンを保存する。
+    """
+    db = get_db()
+
+    # 1. トークン生成
+    raw_token = secrets.token_urlsafe(32)
+
+    # 2. ハッシュ化
+    token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
+
+    # 3. DB保存 (有効期限は30日とする)
+    expires_at = datetime.now() + timedelta(days=30)
+    db.create_session(user_id, token_hash, expires_at)
+
+    return raw_token
+
+
+def validate_session_token(raw_token: str) -> tuple[int, str] | tuple[None, None]:
+    """
+    トークンを検証し、有効ならユーザー情報を返す。
+    """
+    if not raw_token:
+        return None, None
+
+    db = get_db()
+
+    # 1. ハッシュ化
+    token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
+
+    # 2. 検証
+    user_info = db.get_user_by_session(token_hash)
+
+    if user_info:
+        return user_info
+    return None, None
+
+
+def revoke_session_token(raw_token: str) -> None:
+    """
+    セッションを破棄する (ログアウト時)
+    """
+    if not raw_token:
+        return
+
+    db = get_db()
+    token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
+    db.delete_session(token_hash)

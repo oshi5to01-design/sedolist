@@ -71,7 +71,7 @@ class SessionModel(Base):
     __tablename__ = "sessions"
 
     id = Column(Integer, primary_key=True, index=True)
-    session_id = Column(String, unique=True, index=True)
+    session_hash = Column(String, unique=True, index=True)  # ハッシュ化したトークン
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
     expires_at = Column(DateTime)
     created_at = Column(DateTime, default=datetime.now)
@@ -92,6 +92,78 @@ class DatabaseManager:
     def get_db(self):
         """セッションを作成して返す"""
         return SessionLocal()
+
+    # -----------------------------------------------
+    # セッション管理関連
+    # -----------------------------------------------
+    def create_session(
+        self, user_id: int, session_hash: str, expires_at: datetime
+    ) -> None:
+        """新しいセッションを登録する"""
+        db = self.get_db()
+        try:
+            new_session = SessionModel(
+                user_id=user_id,
+                session_hash=session_hash,
+                expires_at=expires_at,
+            )
+            db.add(new_session)
+            db.commit()
+        except Exception as e:
+            db.rollback()
+            print(f"セッション作成エラー: {e}")
+        finally:
+            db.close()
+
+    def get_user_by_session(self, session_hash: str) -> tuple[int, str] | None:
+        """ハッシュ化されたトークンから有効なユーザーを取得する"""
+        db = self.get_db()
+        try:
+            # 期限切れでないセッションを検索
+            session = (
+                db.query(SessionModel)
+                .filter(
+                    SessionModel.session_hash == session_hash,
+                    SessionModel.expires_at > datetime.now(),
+                )
+                .first()
+            )
+
+            if session:
+                user = (
+                    db.query(UserModel).filter(UserModel.id == session.user_id).first()
+                )
+                if user:
+                    return int(user.id), str(user.username)
+            return None
+        finally:
+            db.close()
+
+    def delete_session(self, session_hash: str) -> None:
+        """セッションを削除する（ログアウト時）"""
+        db = self.get_db()
+        try:
+            db.query(SessionModel).filter(
+                SessionModel.session_hash == session_hash
+            ).delete()
+            db.commit()
+        except Exception:
+            db.rollback()
+        finally:
+            db.close()
+
+    def cleanup_expired_sessions(self) -> None:
+        """有効期限切れのセッションを削除する"""
+        db = self.get_db()
+        try:
+            db.query(SessionModel).filter(
+                SessionModel.expires_at < datetime.now()
+            ).delete()
+            db.commit()
+        except Exception:
+            pass
+        finally:
+            db.close()
 
     # -----------------------------------------------
     # 在庫データ関連

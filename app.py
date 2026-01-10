@@ -1,6 +1,7 @@
 import time
 from datetime import datetime
 
+import extra_streamlit_components as stx
 import streamlit as st
 
 import ai_logic as ai
@@ -18,6 +19,12 @@ st.set_page_config(page_title="せどりすと", page_icon="📦")
 # -----------------------------------------------
 # アプリ起動時に一度だけDB管理クラスのインスタンスを作成
 db = get_db()
+
+
+# -----------------------------------------------
+# クッキーマネージャーの初期化
+# -----------------------------------------------
+cookie_manager = stx.CookieManager()
 
 
 # ----------------------------------------------
@@ -238,6 +245,22 @@ if "logged_in" not in st.session_state:
     st.session_state.user_id = None
     st.session_state.username = ""
 
+
+# ---------------------------------------------
+# 永続ログインチェック
+# ---------------------------------------------
+if not st.session_state.logged_in:
+    # クッキーからセッショントークンを取得
+    token_cookie = cookie_manager.get("session_token")
+    if token_cookie:
+        user_id, username = auth.validate_session_token(token_cookie)
+        if user_id:
+            st.session_state.logged_in = True
+            st.session_state.user_id = user_id
+            st.session_state.username = username
+            st.toast(f"お帰りなさい、{username}さん (自動ログイン)")
+
+
 # URLからトークンを取得 (?token=xxxxx)
 query_params = st.query_params
 reset_token = query_params.get("token", None)
@@ -303,7 +326,17 @@ if not st.session_state.logged_in:
                     st.session_state.logged_in = True
                     st.session_state.user_id = user_id
                     st.session_state.username = username
+
+                    # セッション作成 & クッキー保存
+                    token = auth.create_session_token(user_id)
+                    cookie_manager.set(
+                        "session_token",
+                        token,
+                        expires_at=datetime.now() + auth.timedelta(days=30),
+                    )
+
                     st.success("ログイン成功！")
+                    time.sleep(1)
                     st.rerun()
                 else:
                     st.error("メールアドレスかパスワードが間違っています")
@@ -316,6 +349,15 @@ if not st.session_state.logged_in:
             st.session_state.logged_in = True
             st.session_state.user_id = user_id
             st.session_state.username = username
+
+            # セッション作成 & クッキー保存 (ゲストも永続化)
+            token = auth.create_session_token(user_id)
+            cookie_manager.set(
+                "session_token",
+                token,
+                expires_at=datetime.now() + auth.timedelta(days=30),
+            )
+
             st.toast("ゲストログインしました！")
             time.sleep(1)
             st.rerun()
@@ -371,8 +413,17 @@ if not st.session_state.logged_in:
 st.sidebar.success(f"ログイン中: {st.session_state.username}")
 
 if st.sidebar.button("ログアウト"):
+    # サーバー側セッション削除
+    current_token = cookie_manager.get("session_token")
+    if current_token:
+        auth.revoke_session_token(current_token)
+
+    # クッキー削除
+    cookie_manager.delete("session_token")
+
     st.session_state.logged_in = False
     st.session_state.user_id = None
+    time.sleep(0.5)
     st.rerun()
 
 st.title("せどりすと")
