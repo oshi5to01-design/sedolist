@@ -1,7 +1,7 @@
 import time
 from datetime import datetime
 
-import extra_streamlit_components as stx
+import extra_streamlit_components as stx  # type: ignore
 import streamlit as st
 
 import ai_logic as ai
