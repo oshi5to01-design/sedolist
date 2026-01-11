@@ -43,7 +43,7 @@ class UserModel(Base):
 
     __tablename__ = "users"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True)
     username = Column(String, nullable=False)
     email = Column(String, unique=True, nullable=False)
     password_hash = Column(String, nullable=False)
@@ -57,7 +57,7 @@ class ItemModel(Base):
 
     __tablename__ = "items"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
     name = Column(String, nullable=False)
     price = Column(Integer)
@@ -72,7 +72,7 @@ class SessionModel(Base):
 
     __tablename__ = "sessions"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True)
     session_hash = Column(String, unique=True, index=True)  # ハッシュ化したトークン
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
     expires_at = Column(DateTime)
@@ -88,7 +88,7 @@ class DatabaseManager:
     def __init__(self):
         """初期化: コネクションプールの作成とマイグレーション"""
 
-        # 簡易マイグレーション: sessionsテーブルのスキーマ確認
+        # sessionsテーブルのスキーマ確認
         inspector = inspect(engine)
         if inspector.has_table("sessions"):
             columns = [c["name"] for c in inspector.get_columns("sessions")]
