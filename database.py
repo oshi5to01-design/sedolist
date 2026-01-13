@@ -86,7 +86,17 @@ class DatabaseManager:
     """データベース接続と操作を管理するクラス"""
 
     def __init__(self):
-        """初期化: コネクションプールの作成とマイグレーション"""
+        """
+        初期化:
+            コネクションプールの作成とマイグレーション
+
+        sessionsテーブルのスキーマ確認:
+            開発中データベースの設計(カラム名)を変更した場合
+            RenderのDBが古いままでエラーにならないよう起動時にスキーマをチェック
+            旧カラム(session_id)があり、新カラム(session_hash)がない場合は再作成
+
+        テーブルが存在しない場合は作成する
+        """
 
         # sessionsテーブルのスキーマ確認
         inspector = inspect(engine)
@@ -115,7 +125,14 @@ class DatabaseManager:
     def create_session(
         self, user_id: int, session_hash: str, expires_at: datetime
     ) -> None:
-        """新しいセッションを登録する"""
+        """
+        新しいセッションを登録する
+
+        Args:
+            user_id (int): ユーザーID
+            session_hash (str): セッションハッシュ
+            expires_at (datetime): セッションの有効期限
+        """
         db = self.get_db()
         try:
             new_session = SessionModel(
@@ -132,7 +149,18 @@ class DatabaseManager:
             db.close()
 
     def get_user_by_session(self, session_hash: str) -> tuple[int, str] | None:
-        """ハッシュ化されたトークンから有効なユーザーを取得する"""
+        """
+        ハッシュ化されたトークンから有効なユーザーを取得する
+
+        ログイン保持機能:
+            セッションIDが合っているか
+            期限が切れてないか
+
+        セッションテーブルとユーザーテーブルを紐付けて
+        退会済みのユーザーが古いセッションでログインできないようにしている
+
+        セッションにあるuser_idからuser情報を取得する
+        """
         db = self.get_db()
         try:
             # 期限切れでないセッションを検索
@@ -185,7 +213,12 @@ class DatabaseManager:
     # 在庫データ関連
     # -----------------------------------------------
     def load_items(self, user_id: int) -> pd.DataFrame:
-        """指定されたユーザーの在庫データをデータフレームで取得する"""
+        """
+        指定されたユーザーの在庫データをデータフレームで取得する
+
+        ここだけStreamlitの表示速度優先でSQLAlchemyを使わずにSQL直書きし、
+        pandasのDataFrameを返すようにしている
+        """
 
         query = "SELECT * FROM items WHERE user_id = %s ORDER BY id DESC;"
 
@@ -325,7 +358,11 @@ class DatabaseManager:
             db.close()
 
     def update_item(self, item_id: int, col_name: str, new_value: Any) -> None:
-        """指定された商品の特定の項目(カラム)を更新する"""
+        """
+        指定された商品の特定の項目(カラム)を更新する
+
+        在庫の情報の更新・変更など
+        """
         db = self.get_db()
         try:
             # numpyの型変更対策
@@ -346,7 +383,11 @@ class DatabaseManager:
             db.close()
 
     def delete_item(self, item_id: int) -> None:
-        """指定された商品をデータベースから削除する"""
+        """
+        指定された商品をデータベースから削除する
+
+        売れたときなど
+        """
         db = self.get_db()
         try:
             # numpyの型変更対策
@@ -366,7 +407,11 @@ class DatabaseManager:
     # ユーザー情報更新関連
     # -----------------------------------------------
     def delete_user_account(self, user_id: int) -> bool:
-        """ユーザーアカウントを削除する(関連する在庫データも連鎖して削除される)"""
+        """
+        ユーザーアカウントを削除する
+
+        CASCADEしているので、関連する在庫データも連鎖して削除される
+        """
         db = self.get_db()
         try:
             db.query(UserModel).filter(UserModel.id == user_id).delete()
@@ -430,5 +475,12 @@ class DatabaseManager:
 # -----------------------------------------------
 @st.cache_resource
 def get_db():
-    """アプリ全体で一つだけのDatabaseManagerインスタンスを返す"""
+    """
+    アプリ全体で一つだけのDatabaseManagerインスタンスを返す
+
+    Streamlitの仕様上、リロードのたびにインスタンスが再生成されるのを防ぐため
+    `@st.cache_resource` デコレータを使用してインスタンスをキャッシュ（メモリに常駐）させている
+    これにより、コネクションプール（ThreadedConnectionPool）が不必要に増殖し
+    DB接続数上限（Max Connections）に達するのを防いでいる
+    """
     return DatabaseManager()
