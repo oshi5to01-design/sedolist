@@ -7,7 +7,16 @@ import ai_logic
 @patch("ai_logic.Image.open")
 @patch("ai_logic.st")
 def test_analyze_image_clean_json(mock_st, mock_open, mock_model_cls):
-    """正常系: クリーンなJSONのみが返ってくる場合"""
+    """正常系: クリーンなJSONのみが返ってくる場合
+
+    Args:
+        mock_st (MagicMock): Streamlitのモック
+        mock_open (MagicMock): PIL.Image.openのモック
+        mock_model_cls (MagicMock): genai.GenerativeModelのモック
+
+    Returns:
+        None
+    """
     mock_instance = mock_model_cls.return_value
     # AIの返答を設定
     mock_instance.generate_content.return_value.text = (
@@ -25,7 +34,16 @@ def test_analyze_image_clean_json(mock_st, mock_open, mock_model_cls):
 @patch("ai_logic.Image.open")
 @patch("ai_logic.st")
 def test_analyze_image_markdown_json(mock_st, mock_open, mock_model_cls):
-    """正常系: Markdown記法や余計な文章が含まれる場合"""
+    """正常系: Markdown記法や余計な文章が含まれる場合
+
+    Args:
+        mock_st (MagicMock): Streamlitのモック
+        mock_open (MagicMock): PIL.Image.openのモック
+        mock_model_cls (MagicMock): genai.GenerativeModelのモック
+
+    Returns:
+        None
+    """
     mock_instance = mock_model_cls.return_value
     mock_instance.generate_content.return_value.text = """
     Here is the result:
@@ -49,7 +67,16 @@ def test_analyze_image_markdown_json(mock_st, mock_open, mock_model_cls):
 @patch("ai_logic.Image.open")
 @patch("ai_logic.st")
 def test_analyze_image_no_json(mock_st, mock_open, mock_model_cls):
-    """異常系: JSONが含まれていない場合"""
+    """異常系: JSONが含まれていない場合
+
+    Args:
+        mock_st (MagicMock): Streamlitのモック
+        mock_open (MagicMock): PIL.Image.openのモック
+        mock_model_cls (MagicMock): genai.GenerativeModelのモック
+
+    Returns:
+        None
+    """
     mock_instance = mock_model_cls.return_value
     mock_instance.generate_content.return_value.text = (
         "Sorry, I could not find any price tag."
@@ -66,7 +93,16 @@ def test_analyze_image_no_json(mock_st, mock_open, mock_model_cls):
 @patch("ai_logic.Image.open")
 @patch("ai_logic.st")
 def test_analyze_image_api_error(mock_st, mock_open, mock_model_cls):
-    """異常系: API呼び出しで例外が発生した場合"""
+    """異常系: API呼び出しで例外が発生した場合
+
+    Args:
+        mock_st (MagicMock): Streamlitのモック
+        mock_open (MagicMock): PIL.Image.openのモック
+        mock_model_cls (MagicMock): genai.GenerativeModelのモック
+
+    Returns:
+        None
+    """
     mock_instance = mock_model_cls.return_value
     mock_instance.generate_content.side_effect = Exception("API Error")
 

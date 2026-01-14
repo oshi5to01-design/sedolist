@@ -132,6 +132,9 @@ class DatabaseManager:
             user_id (int): ユーザーID
             session_hash (str): セッションハッシュ
             expires_at (datetime): セッションの有効期限
+
+        Returns:
+            None
         """
         db = self.get_db()
         try:
@@ -152,14 +155,17 @@ class DatabaseManager:
         """
         ハッシュ化されたトークンから有効なユーザーを取得する
 
-        ログイン保持機能:
-            セッションIDが合っているか
-            期限が切れてないか
+        Args:
+            session_hash (str): セッションハッシュ
 
-        セッションテーブルとユーザーテーブルを紐付けて
-        退会済みのユーザーが古いセッションでログインできないようにしている
+        Returns:
+            tuple[int, str] | None: ユーザーIDとユーザー名
 
-        セッションにあるuser_idからuser情報を取得する
+        note:
+            ログイン保持機能: セッションIDが合っているか,期限が切れてないか
+            セッションテーブルとユーザーテーブルを紐付けて
+            退会済みのユーザーが古いセッションでログインできないようにしている
+            セッションにあるuser_idからuser情報を取得する
         """
         db = self.get_db()
         try:
@@ -184,7 +190,15 @@ class DatabaseManager:
             db.close()
 
     def delete_session(self, session_hash: str) -> None:
-        """セッションを削除する（ログアウト時）"""
+        """
+        セッションを削除する（ログアウト時）
+
+        Args:
+            session_hash (str): セッションハッシュ
+
+        Returns:
+            None
+        """
         db = self.get_db()
         try:
             db.query(SessionModel).filter(
@@ -197,7 +211,12 @@ class DatabaseManager:
             db.close()
 
     def cleanup_expired_sessions(self) -> None:
-        """有効期限切れのセッションを削除する"""
+        """
+        有効期限切れのセッションを削除する
+
+        Returns:
+            None
+        """
         db = self.get_db()
         try:
             db.query(SessionModel).filter(
@@ -216,8 +235,15 @@ class DatabaseManager:
         """
         指定されたユーザーの在庫データをデータフレームで取得する
 
-        ここだけStreamlitの表示速度優先でSQLAlchemyを使わずにSQL直書きし、
-        pandasのDataFrameを返すようにしている
+        Args:
+            user_id (int): ユーザーID
+
+        Returns:
+            pd.DataFrame: 指定されたユーザーの在庫データ
+
+        note:
+            ここだけStreamlitの表示速度優先でSQLAlchemyを使わずにSQL直書きし、
+            pandasのDataFrameを返すようにしている
         """
 
         query = "SELECT * FROM items WHERE user_id = %s ORDER BY id DESC;"
@@ -236,7 +262,20 @@ class DatabaseManager:
         shop: str | None = None,
         memo: str | None = None,
     ) -> None:
-        """新しい商品をデータベースに登録する"""
+        """
+        新しい商品をデータベースに登録する
+
+        Args:
+            user_id (int): ユーザーID
+            name (str): 商品名
+            price (int): 価格
+            quantity (int): 在庫数
+            shop (str | None, optional): 買った店舗名. Defaults to None.
+            memo (str | None, optional): 備考. Defaults to None.
+
+        Returns:
+            None
+        """
         db = self.get_db()
         try:
             new_item = ItemModel(
@@ -260,7 +299,15 @@ class DatabaseManager:
     # サンプルデータ作成 (ゲスト用)
     # ---------------------------------------------
     def create_sample_items(self, user_id: int) -> None:
-        """ゲストユーザー用にサンプルデータを一括登録する"""
+        """
+        ゲストユーザー用にサンプルデータを一括登録する
+
+        Args:
+            user_id (int): ユーザーID
+
+        Returns:
+            None
+        """
         db = self.get_db()
 
         # サンプルデータのリスト
@@ -361,7 +408,16 @@ class DatabaseManager:
         """
         指定された商品の特定の項目(カラム)を更新する
 
-        在庫の情報の更新・変更など
+        Args:
+            item_id (int): 更新する商品のID
+            col_name (str): 更新するカラム名
+            new_value (Any): 更新する値
+
+        Returns:
+            None
+
+        note:
+            在庫の情報の更新・変更など
         """
         db = self.get_db()
         try:
@@ -386,7 +442,14 @@ class DatabaseManager:
         """
         指定された商品をデータベースから削除する
 
-        売れたときなど
+        Args:
+            item_id (int): 削除する商品のID
+
+        Returns:
+            None
+
+        note:
+            売れたときなど
         """
         db = self.get_db()
         try:
@@ -410,7 +473,14 @@ class DatabaseManager:
         """
         ユーザーアカウントを削除する
 
-        CASCADEしているので、関連する在庫データも連鎖して削除される
+        Args:
+            user_id (int): ユーザーID
+
+        Returns:
+            bool: 削除成功/失敗
+
+        note:
+            CASCADEしているので、関連する在庫データも連鎖して削除される
         """
         db = self.get_db()
         try:

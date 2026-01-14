@@ -14,6 +14,15 @@ from mail_service import send_reset_email
 def cleanup_expired_tokens(db: Session) -> None:
     """
     有効期限切れのリセットトークンを削除する
+
+    Args:
+        db (Session): SQLAlchemyセッション
+
+    Returns:
+        None
+
+    Notes:
+        synchronize_session=Falseで素早く削除する
     """
     try:
         now = datetime.now()
@@ -31,7 +40,18 @@ def cleanup_expired_tokens(db: Session) -> None:
 
 
 def cleanup_expired_guests(db: Session) -> None:
-    """作成から24時間経過したゲストユーザーを削除する"""
+    """
+    作成から24時間経過したゲストユーザーを削除する
+
+    Args:
+        db (Session): SQLAlchemyセッション
+
+    Returns:
+        None
+
+    Notes:
+        synchronize_session=Falseで素早く削除する
+    """
     try:
         # 24時間前の時間を計算
         cutoff_time = datetime.now() - timedelta(hours=24)
@@ -60,6 +80,13 @@ def check_login(email: str, password: str) -> tuple[int, str] | tuple[None, None
     """
     メールアドレスとパスワードでログイン認証を行う
     成功すれば(user_id,username)を返し、失敗すれば(None,None)を返す
+
+    Args:
+        email (str): メールアドレス
+        password (str): パスワード
+
+    Returns:
+        tuple[int, str] | tuple[None, None]: (user_id, username)または(None, None)
     """
     db = SessionLocal()
     try:
@@ -85,6 +112,14 @@ def register_user(username: str, email: str, password: str) -> tuple[bool, str]:
     新しいユーザーを登録する
     パスワードはハッシュ化して保存される
     戻り値:(成功したかどうかのTrue/False,メッセージ)
+
+    Args:
+        username (str): ユーザー名
+        email (str): メールアドレス
+        password (str): パスワード
+
+    Returns:
+        tuple[bool, str]: (成功したかどうかのTrue/False,メッセージ)
     """
     db = SessionLocal()
 
@@ -113,6 +148,12 @@ def register_user(username: str, email: str, password: str) -> tuple[bool, str]:
 def login_as_guest() -> tuple[int, str] | tuple[None, None]:
     """
     ゲストユーザーとしてログインする
+
+    Returns:
+        tuple[int, str] | tuple[None, None]: (user_id, username)または(None, None)
+
+    Raises:
+        Exception: データベース操作中に発生した例外
     """
     # ランダムなゲストIDを生成
     guest_id = secrets.token_hex(4)
@@ -140,6 +181,14 @@ def change_password(
 ) -> tuple[bool, str]:
     """
     現在のパスワードを確認し、合っていれば新しいパスワード(ハッシュ化済み)に更新する
+
+    Args:
+        user_id (int): ユーザーID
+        current_password (str): 現在のパスワード
+        new_password (str): 新しいパスワード
+
+    Returns:
+        tuple[bool, str]: (成功したかどうかのTrue/False,メッセージ)
     """
     db = SessionLocal()
 
@@ -169,6 +218,12 @@ def change_password(
 def issue_reset_token(email: str) -> bool:
     """
     パスワードリセット用のトークンを発行し、メールを送信する。
+
+    Args:
+        email (str): メールアドレス
+
+    Returns:
+        bool: トークン発行に成功したかどうか
     """
     db = SessionLocal()
 
@@ -207,6 +262,12 @@ def issue_reset_token(email: str) -> bool:
 def verify_reset_token(token: str) -> tuple[int, str] | None:
     """
     URLに含まれるトークンが有効(期限内かつDBに存在)かチェックする。
+
+    Args:
+        token (str): リセットトークン
+
+    Returns:
+        tuple[int, str] | None: ユーザーIDとメールアドレスのタプルまたはNone
     """
     db = SessionLocal()
     try:
@@ -229,6 +290,13 @@ def verify_reset_token(token: str) -> tuple[int, str] | None:
 def reset_password(user_id: int, new_password: str) -> bool:
     """
     パスワードリセット用:新しいパスワードを設定し、使用済みトークンを削除する。
+
+    Args:
+        user_id (int): ユーザーID
+        new_password (str): 新しいパスワード
+
+    Returns:
+        bool: パスワードリセットに成功したかどうか
     """
     db = SessionLocal()
     try:
@@ -257,6 +325,15 @@ def create_session_token(user_id: int) -> str:
     """
     セッションを作成し、クッキー用のトークンを返す。
     DBにはハッシュ化したトークンを保存する。
+
+    Args:
+        user_id (int): ユーザーID
+
+    Returns:
+        str: クッキー用のトークン
+
+    Notes:
+        有効期限は30日とする
     """
     db = get_db()
 
@@ -266,7 +343,7 @@ def create_session_token(user_id: int) -> str:
     # 2. ハッシュ化
     token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
 
-    # 3. DB保存 (有効期限は30日とする)
+    # 3. DB保存
     expires_at = datetime.now() + timedelta(days=30)
     db.create_session(user_id, token_hash, expires_at)
 
@@ -276,6 +353,12 @@ def create_session_token(user_id: int) -> str:
 def validate_session_token(raw_token: str) -> tuple[int, str] | tuple[None, None]:
     """
     トークンを検証し、有効ならユーザー情報を返す。
+
+    Args:
+        raw_token (str): クッキー用のトークン
+
+    Returns:
+        tuple[int, str] | tuple[None, None]: ユーザーIDとメールアドレスのタプルまたはNone
     """
     if not raw_token:
         return None, None
@@ -296,6 +379,9 @@ def validate_session_token(raw_token: str) -> tuple[int, str] | tuple[None, None
 def revoke_session_token(raw_token: str) -> None:
     """
     セッションを破棄する (ログアウト時)
+
+    Args:
+        raw_token (str): クッキー用のトークン
     """
     if not raw_token:
         return
