@@ -18,6 +18,12 @@ genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 def analyze_image_with_gemini(uploaded_file: Any) -> dict[str, Any] | None:
     """
     アップロードされた画像をGeminiに渡し、商品名と価格を抽出する。
+
+    Args:
+        uploaded_file (Any): アップロードされた画像ファイル
+
+    Returns:
+        dict[str, Any] | None: 商品名と価格の辞書またはNone
     """
     try:
         # 画像を読み込む

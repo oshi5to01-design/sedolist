@@ -11,6 +11,12 @@ def db_manager(db_session):
     """
     テスト用のDatabaseManagerインスタンスを生成する。
     本番DBへの接続を防ぐため、__init__を一時的に無効化する。
+
+    Args:
+        db_session (Session): テスト用のDBセッション
+
+    Returns:
+        DatabaseManager: テスト用のDatabaseManagerインスタンス
     """
     # __init__を退避して無効化
     original_init = DatabaseManager.__init__
@@ -31,7 +37,15 @@ def db_manager(db_session):
 
 
 def test_register_item(db_manager, db_session):
-    """商品登録機能のテスト"""
+    """商品登録機能のテスト
+
+    Args:
+        db_manager (DatabaseManager): テスト用のDatabaseManagerインスタンス
+        db_session (Session): テスト用のDBセッション
+
+    Returns:
+        None
+    """
     # 事前準備: ユーザー作成
     user = UserModel(username="tester", email="test@example.com", password_hash="xxx")
     db_session.add(user)
@@ -50,7 +64,15 @@ def test_register_item(db_manager, db_session):
 
 
 def test_update_item(db_manager, db_session):
-    """商品更新機能のテスト"""
+    """商品更新機能のテスト
+
+    Args:
+        db_manager (DatabaseManager): テスト用のDatabaseManagerインスタンス
+        db_session (Session): テスト用のDBセッション
+
+    Returns:
+        None
+    """
     # 事前準備
     user = UserModel(username="tester", email="test@example.com", password_hash="xxx")
     db_session.add(user)
@@ -74,7 +96,15 @@ def test_update_item(db_manager, db_session):
 
 
 def test_delete_item(db_manager, db_session):
-    """商品削除機能のテスト"""
+    """商品削除機能のテスト
+
+    Args:
+        db_manager (DatabaseManager): テスト用のDatabaseManagerインスタンス
+        db_session (Session): テスト用のDBセッション
+
+    Returns:
+        None
+    """
     # 事前準備
     user = UserModel(username="tester", email="test@example.com", password_hash="xxx")
     db_session.add(user)
@@ -94,7 +124,15 @@ def test_delete_item(db_manager, db_session):
 
 
 def test_update_username(db_manager, db_session):
-    """ユーザー名更新テスト"""
+    """ユーザー名更新テスト
+
+    Args:
+        db_manager (DatabaseManager): テスト用のDatabaseManagerインスタンス
+        db_session (Session): テスト用のDBセッション
+
+    Returns:
+        None
+    """
     user = UserModel(username="old_name", email="test@example.com", password_hash="xxx")
     db_session.add(user)
     db_session.commit()
@@ -109,7 +147,15 @@ def test_update_username(db_manager, db_session):
 
 
 def test_update_email_success(db_manager, db_session):
-    """メールアドレス更新成功テスト"""
+    """メールアドレス更新成功テスト
+
+    Args:
+        db_manager (DatabaseManager): テスト用のDatabaseManagerインスタンス
+        db_session (Session): テスト用のDBセッション
+
+    Returns:
+        None
+    """
     user = UserModel(username="user", email="old@example.com", password_hash="xxx")
     db_session.add(user)
     db_session.commit()
@@ -124,7 +170,15 @@ def test_update_email_success(db_manager, db_session):
 
 
 def test_update_email_duplicate(db_manager, db_session):
-    """メールアドレス重複エラーテスト"""
+    """メールアドレス重複エラーテスト
+
+    Args:
+        db_manager (DatabaseManager): テスト用のDatabaseManagerインスタンス
+        db_session (Session): テスト用のDBセッション
+
+    Returns:
+        None
+    """
     # 既存ユーザー
     user1 = UserModel(
         username="user1", email="existing@example.com", password_hash="xxx"
@@ -144,7 +198,15 @@ def test_update_email_duplicate(db_manager, db_session):
 
 
 def test_delete_user_account(db_manager, db_session):
-    """アカウント削除テスト（Cascade削除確認含む）"""
+    """アカウント削除テスト（Cascade削除確認含む）
+
+    Args:
+        db_manager (DatabaseManager): テスト用のDatabaseManagerインスタンス
+        db_session (Session): テスト用のDBセッション
+
+    Returns:
+        None
+    """
     user = UserModel(username="del_user", email="del@example.com", password_hash="xxx")
     db_session.add(user)
     db_session.commit()
@@ -172,6 +234,12 @@ def test_load_items_mock(db_manager):
     """
     load_itemsは生のSQL(pd.read_sql)を使っているため、
     PostgreSQL構文を含む可能性を考慮し、pandasをモックしてテストする
+
+    Args:
+        db_manager (DatabaseManager): テスト用のDatabaseManagerインスタンス
+
+    Returns:
+        None
     """
     mock_df = pd.DataFrame({"id": [1], "name": ["Test"]})
 

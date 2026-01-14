@@ -15,6 +15,16 @@ class TestSessionManagement(unittest.TestCase):
     @patch("auth.secrets")
     @patch("auth.hashlib")
     def test_create_session_token(self, mock_hashlib, mock_secrets, mock_get_db):
+        """正常系: 有効期限付きのセッショントークンを生成する
+
+        Args:
+            mock_hashlib (MagicMock): hashlibのモック
+            mock_secrets (MagicMock): secretsのモック
+            mock_get_db (MagicMock): get_dbのモック
+
+        Returns:
+            None
+        """
         # モックの準備
         mock_db_instance = MagicMock()
         mock_get_db.return_value = mock_db_instance
@@ -40,6 +50,15 @@ class TestSessionManagement(unittest.TestCase):
     @patch("auth.get_db")
     @patch("auth.hashlib")
     def test_validate_session_token_valid(self, mock_hashlib, mock_get_db):
+        """正常系: 有効なセッショントークンを検証する
+
+        Args:
+            mock_hashlib (MagicMock): hashlibのモック
+            mock_get_db (MagicMock): get_dbのモック
+
+        Returns:
+            None
+        """
         # モックの準備
         mock_db_instance = MagicMock()
         mock_get_db.return_value = mock_db_instance
@@ -59,12 +78,14 @@ class TestSessionManagement(unittest.TestCase):
 
     @patch("auth.get_db")
     def test_validate_session_token_none(self, mock_get_db):
+        """異常系: Noneを渡すとNoneを返す"""
         result = auth.validate_session_token(None)
         self.assertEqual(result, (None, None))
 
     @patch("auth.get_db")
     @patch("auth.hashlib")
     def test_revoke_session_token(self, mock_hashlib, mock_get_db):
+        """正常系: セッショントークンを無効化する"""
         # モックの準備
         mock_db_instance = MagicMock()
         mock_get_db.return_value = mock_db_instance

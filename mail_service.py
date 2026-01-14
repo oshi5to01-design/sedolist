@@ -9,7 +9,19 @@ load_dotenv()
 
 
 def send_reset_email(to_email, reset_url):
-    """GmailのSMTPサーバーを使用して、パスワードリセットメールを送信する"""
+    """GmailのSMTPサーバーを使用して、パスワードリセットメールを送信する
+
+    Args:
+        to_email (str): 受信者のメールアドレス
+        reset_url (str): パスワードリセット用のURL
+
+    Returns:
+        bool: メール送信の成否
+
+    Notes:
+        SendGridのSMTPサーバーを使用しようとしたが、
+        ポリシー違反でできなかったため、GmailのSMTPサーバーを使用する
+    """
     sender_email = os.getenv("MAIL_SENDER_ADDRESS")
     app_password = os.getenv("MAIL_APP_PASSWORD")
 
