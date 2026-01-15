@@ -247,7 +247,7 @@ class DatabaseManager:
         Returns:
             pd.DataFrame: 指定されたユーザーの在庫データ
 
-        note:
+        Notes:
             ここだけStreamlitの表示速度優先でSQLAlchemyを使わずにSQL直書きし、
             pandasのDataFrameを返すようにしている
         """
