@@ -87,6 +87,11 @@ def check_login(email: str, password: str) -> tuple[int, str] | tuple[None, None
 
     Returns:
         tuple[int, str] | tuple[None, None]: (user_id, username)または(None, None)
+
+    Notes:
+        サーバーの起動を抑えるためクーロンで定期的に起動するのではなく、
+        だれかのログインをトリガーに、
+        期限切れのトークンと24時間経過したゲストユーザーを削除する
     """
     db = SessionLocal()
     try:
@@ -96,6 +101,7 @@ def check_login(email: str, password: str) -> tuple[int, str] | tuple[None, None
             if bcrypt.checkpw(
                 password.encode("utf-8"), user.password_hash.encode("utf-8")
             ):
+                # 期限切れのトークンと24時間経過したゲストユーザーを削除
                 cleanup_expired_tokens(db)
                 cleanup_expired_guests(db)
                 return int(user.id), str(user.username)

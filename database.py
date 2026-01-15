@@ -135,6 +135,9 @@ class DatabaseManager:
 
         Returns:
             None
+
+        Notes:
+            ログイン時にクッキーに保存する
         """
         db = self.get_db()
         try:
@@ -216,6 +219,9 @@ class DatabaseManager:
 
         Returns:
             None
+
+        Notes:
+            誰かのログインをトリガーにして削除するようにする
         """
         db = self.get_db()
         try:
