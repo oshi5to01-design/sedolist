@@ -8,6 +8,19 @@ load_dotenv()
 
 
 def create_user(username, email, password):
+    """新しいユーザーをデータベースに登録する
+
+    Args:
+        username (str): ユーザー名
+        email (str): メールアドレス
+        password (str): パスワード
+
+    Returns:
+        None
+
+    Notes:
+        開発中テスト用にユーザーを作成する
+    """
     # パスワードをハッシュ化する
     salt = bcrypt.gensalt()
     password_hash = bcrypt.hashpw(password.encode("utf-8"), salt)
