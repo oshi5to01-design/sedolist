@@ -260,5 +260,5 @@ def test_load_items_mock(db_manager):
             args, kwargs = mock_read_sql.call_args
             # 第1引数はSQLクエリ
             assert "SELECT * FROM items" in args[0]
-            # paramsにuser_idが含まれているか
-            assert kwargs["params"] == (123,)
+            # paramsにuser_idとlimitが含まれているか
+            assert kwargs["params"] == (123, 5)

@@ -54,13 +54,81 @@ def show_inventory_screen() -> None:
     """
     st.subheader("現在の在庫一覧")
 
-    # dbモジュールからデータ取得
-    df_items = db.load_items(st.session_state.user_id)
-
+    # 表示モードを選択
     view_mode = st.radio(
-        "表示モード", ["表形式（PC向け）", "カード形式（スマホ向け）"], horizontal=True
+        "表示モード",
+        ["表形式（PC向け）", "カード形式（スマホ向け）"],
+        horizontal=True,
+        key="view_mode_state",
     )
 
+    # 変数・検索
+    if "cursor_history" not in st.session_state:
+        st.session_state.cursor_history = [None]
+    if "active_search" not in st.session_state:
+        st.session_state.active_search = ""
+
+    col_search, col_btn = st.columns([4, 1])
+    with col_search:
+        search_input = st.text_input(
+            "検索",
+            value=st.session_state.active_search,
+            placeholder="商品名を入力・・・",
+            label_visibility="collapsed",
+        )
+    with col_btn:
+        if st.button("検索", use_container_width=True):
+            if search_input != st.session_state.active_search:
+                st.session_state.active_search = search_input
+                st.session_state.cursor_history = [None]
+                st.rerun()
+
+    current_cursor = st.session_state.cursor_history[-1]
+    LIMIT = 5  # 本番では50にする予定
+
+    df_items = db.load_items(
+        st.session_state.user_id,
+        limit=LIMIT,
+        last_id=current_cursor,
+        search_query=st.session_state.active_search,
+    )
+
+    # ページ送りボタンを表示する内部関数
+    def render_pagination(location_key: str):
+        """
+        指定された位置にページ送りボタンを表示する
+
+        Args:
+            location_key (str): ボタンの位置を示すキー
+
+        Returns:
+            None
+        """
+        col_prev, _, col_next = st.columns([1, 2, 1])
+
+        with col_prev:
+            # 履歴が１個より多いなら前のページへを表示
+            if len(st.session_state.cursor_history) > 1:
+                if st.button(
+                    "前のページ", key=f"prev_{location_key}", use_container_width=True
+                ):
+                    st.session_state.cursor_history.pop()
+                    st.rerun()
+
+        with col_next:
+            # データが満タンなら次のページへを表示
+            if len(df_items) == LIMIT:
+                if st.button(
+                    "次のページ", key=f"next_{location_key}", use_container_width=True
+                ):
+                    last_id = int(df_items.iloc[-1]["id"])
+                    st.session_state.cursor_history.append(last_id)
+                    st.rerun()
+
+    # ページ送りボタンを表示
+    render_pagination("top")
+
+    # データ表示エリア
     if view_mode == "表形式（PC向け）":
         # 表示用に整形
         display_df = df_items[
@@ -174,6 +242,9 @@ def show_inventory_screen() -> None:
                         db.delete_item(item_id)
                         st.toast("削除しました")
                         st.rerun()
+
+    # ページ送りボタンを表示
+    render_pagination("bottom")
 
 
 @st.fragment
