@@ -237,7 +237,13 @@ class DatabaseManager:
     # -----------------------------------------------
     # 在庫データ関連
     # -----------------------------------------------
-    def load_items(self, user_id: int) -> pd.DataFrame:
+    def load_items(
+        self,
+        user_id: int,
+        limit: int = 5,  # 本番では50にする予定
+        last_id: int | None = None,
+        search_query: str | None = None,
+    ) -> pd.DataFrame:
         """
         指定されたユーザーの在庫データをデータフレームで取得する
 
@@ -252,10 +258,25 @@ class DatabaseManager:
             pandasのDataFrameを返すようにしている
         """
 
-        query = "SELECT * FROM items WHERE user_id = %s ORDER BY id DESC;"
+        query = "SELECT * FROM items WHERE user_id = %s"
+        params = [user_id]
+
+        # 検索ワードがある場合
+        if search_query:
+            query += " AND name LIKE %s"
+            # 部分一致検索
+            params.append(f"%{search_query}%")  # type: ignore
+
+        # カーソル(ページ送り)
+        if last_id is not None:
+            query += " AND id < %s"
+            params.append(last_id)
+
+        query += " ORDER BY id DESC LIMIT %s"
+        params.append(limit)
 
         with engine.connect() as conn:
-            df = pd.read_sql(query, conn, params=(user_id,))
+            df = pd.read_sql(query, conn, params=tuple(params))
 
         return df
 
